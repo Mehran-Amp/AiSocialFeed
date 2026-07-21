@@ -1,0 +1,47 @@
+# ── Telegram Bot ─────────────────────────────
+python-telegram-bot[webhooks]==21.6
+
+# ── Database ──────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# ── Django Admin Panel ────────────────────────
+django==5.1.4
+django-jazzmin==3.0.1          # responsive admin theme
+psycopg2-binary==2.9.10
+django-celery-beat==2.7.0
+gunicorn==23.0.0
+whitenoise==6.8.0
+
+# ── Celery & Redis ────────────────────────────
+celery==5.4.0
+redis==5.2.1
+
+# ── HTTP ──────────────────────────────────────
+httpx[http2]==0.28.1
+aiohttp==3.11.10
+feedparser==6.0.11             # RSS parsing
+
+# ── Video Download ────────────────────────────
+yt-dlp==2024.12.13
+cachetools>=5.3.0          # TTLCache for video info cache (PERF-2)
+
+# ── AI (DeepSeek — OpenAI-compatible) ────────
+openai==1.58.1                 # used with DeepSeek base_url
+
+# ── Security ──────────────────────────────────
+cryptography==44.0.0           # Fernet encryption for API keys
+python-dotenv==1.0.1
+
+# ── Utilities ─────────────────────────────────
+psutil==6.1.1                  # system metrics for debug report
+orjson==3.10.12                # fast JSON
+python-dateutil==2.9.0
+pytz==2024.2
+Pillow==11.0.0                 # image processing for media
+
+# ── Dev / Testing ─────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-mock==3.14.0

@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+*.env
+
+# Logs
+logs/
+*.log
+
+# Media & uploads
+media/
+backups/
+
+# Static files (generated)
+static/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.sqlite3
+
+# Alembic
+alembic/versions/*.py
+!alembic/versions/001_initial.py

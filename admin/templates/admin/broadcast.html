@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div class="module" style="max-width:700px;margin:20px auto;">
+  <h2>📢 Broadcast Message</h2>
+  <p style="color:#666;">Messages are sent at <b>1 per second</b> via Celery — safe from Telegram flood limits.</p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div style="margin-bottom:16px;">
+      <label><b>Target users:</b></label><br>
+      <select name="plan_filter" style="width:100%;padding:8px;margin-top:4px;">
+        {% for value, label in plan_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <label><b>Message (HTML supported):</b></label><br>
+      <textarea name="message" rows="8" style="width:100%;padding:8px;margin-top:4px;font-family:monospace;"
+                placeholder="e.g. 🎉 &lt;b&gt;New feature&lt;/b&gt; available now..."></textarea>
+    </div>
+
+    <div style="background:#fff3cd;padding:12px;border-radius:4px;margin-bottom:16px;">
+      ⚠️ <b>Note:</b> This action cannot be undone. Preview your message before sending.
+    </div>
+
+    <input type="submit" value="📤 Send Broadcast" class="button default"
+           onclick="return confirm('Send this broadcast? This cannot be undone.');">
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AiSocialFeed — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#08090c; --surface:#0f1117; --card:#141720;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --blue:#3b82f6; --blue-dim:rgba(59,130,246,0.1);
+  --green:#22c55e; --green-dim:rgba(34,197,94,0.1);
+  --yellow:#eab308; --yellow-dim:rgba(234,179,8,0.1);
+  --red:#ef4444; --red-dim:rgba(239,68,68,0.1);
+  --gold:#f59e0b; --gold-dim:rgba(245,158,11,0.1);
+  --purple:#8b5cf6;
+  --t1:#f1f5f9; --t2:#94a3b8; --t3:#475569;
+  --r:8px;
+  --sans:'Geist',-apple-system,sans-serif;
+  --mono:'Geist Mono','Fira Code',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;font-weight:400;line-height:1.5;-webkit-font-smoothing:antialiased}
+.layout{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:232px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:200;overflow-y:auto;transition:transform .25s ease}
+.sb-logo{padding:18px 14px 14px;border-bottom:1px solid var(--border)}
+.sb-tag{font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.sb-name{font-size:15px;font-weight:600;color:var(--t1);letter-spacing:-.02em}
+.sb-url{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px}
+.nav-sec{padding:14px 12px 4px;font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase}
+.nav-lnk{display:flex;align-items:center;gap:8px;padding:7px 10px;margin:1px 6px;border-radius:6px;cursor:pointer;color:var(--t2);font-size:13px;font-weight:400;transition:all .15s;user-select:none}
+.nav-lnk:hover{background:var(--card);color:var(--t1)}
+.nav-lnk.active{background:var(--blue-dim);color:var(--blue);font-weight:500}
+.nav-lnk .ic{font-size:13px;width:16px;text-align:center;flex-shrink:0}
+.nb{margin-left:auto;font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4px;font-weight:500}
+.nb-r{background:var(--red-dim);color:var(--red)}
+.nb-y{background:var(--yellow-dim);color:var(--yellow)}
+.nb-g{background:var(--green-dim);color:var(--green)}
+.nb-b{background:var(--blue-dim);color:var(--blue)}
+.sb-foot{margin-top:auto;padding:10px;border-top:1px solid var(--border)}
+.sys-pill{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:6px;background:var(--green-dim);border:1px solid rgba(34,197,94,.15)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sys-txt{font-family:var(--mono);font-size:11px;color:var(--green)}
+
+/* Hamburger */
+.hbg{display:none;position:fixed;top:12px;left:12px;z-index:300;background:var(--surface);border:1px solid var(--border2);border-radius:7px;padding:7px 9px;cursor:pointer;font-size:15px;line-height:1;color:var(--t1)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190}
+
+/* Main */
+.main{margin-left:232px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:50px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:10px;position:sticky;top:0;z-index:100}
+.tb-title{font-size:14px;font-weight:500;color:var(--t1)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.clock{font-family:var(--mono);font-size:11px;color:var(--t3);background:var(--card);padding:3px 8px;border-radius:5px;border:1px solid var(--border)}
+.av{width:27px;height:27px;border-radius:6px;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+.content{padding:18px}
+
+/* Sections */
+.section{display:none}.section.active{display:block}
+
+/* Stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:relative}
+.sc::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r) var(--r) 0 0}
+.sc.cb::after{background:var(--blue)}.sc.cg::after{background:var(--green)}
+.sc.cy::after{background:var(--yellow)}.sc.cp::after{background:var(--purple)}
+.sc.cr::after{background:var(--red)}.sc.co::after{background:var(--gold)}
+.sv{font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--t1);line-height:1.1;margin-bottom:3px}
+.sl{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.sd{position:absolute;top:12px;right:10px;font-size:10px;font-family:var(--mono);padding:2px 5px;border-radius:4px}
+.su{background:var(--green-dim);color:var(--green)}.sdn{background:var(--red-dim);color:var(--red)}
+
+/* Grid */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.mb{margin-bottom:12px}
+
+/* Card */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ch{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ct{font-size:13px;font-weight:500;color:var(--t1)}
+.cs{font-size:11px;font-family:var(--mono);color:var(--t3);margin-left:auto}
+.cb{padding:14px}
+
+/* Tables */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{padding:8px 10px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:400}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+tbody td{padding:9px 10px;color:var(--t2);vertical-align:middle}
+.mn{font-family:var(--mono);font-size:11px;color:var(--t3)}
+
+/* Badges */
+.bdg{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500;white-space:nowrap}
+.b-free{background:rgba(71,85,105,.18);color:var(--t3)}
+.b-pro{background:var(--blue-dim);color:var(--blue)}
+.b-prem{background:var(--gold-dim);color:var(--gold)}
+.b-ok{background:var(--green-dim);color:var(--green)}
+.b-warn{background:var(--yellow-dim);color:var(--yellow)}
+.b-err{background:var(--red-dim);color:var(--red)}
+.b-gray{background:rgba(71,85,105,.15);color:var(--t3)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--sans);white-space:nowrap;text-decoration:none}
+.bp{background:var(--blue);color:#fff}.bp:hover{background:#2563eb}
+.bd{background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.bs{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.bw{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(234,179,8,.2)}
+.bg{background:var(--surface);color:var(--t2);border:1px solid var(--border)}.bg:hover{border-color:var(--border2);color:var(--t1)}
+.bsm{padding:4px 8px;font-size:11px}
+
+/* Fields */
+.fld{display:flex;flex-direction:column;gap:4px;margin-bottom:11px}
+.fld label{font-size:10px;font-family:var(--mono);color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.inp{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--t1);font-family:var(--sans);font-size:13px;font-weight:400;outline:none;transition:border-color .15s;width:100%}
+.inp:focus{border-color:var(--blue)}
+select.inp{cursor:pointer}
+textarea.inp{resize:vertical}
+
+/* Progress */
+.pr{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.pl{font-family:var(--mono);font-size:11px;color:var(--t3);width:74px;flex-shrink:0}
+.pt{flex:1;height:3px;background:var(--surface);border-radius:10px;overflow:hidden}
+.pf{height:100%;border-radius:10px;transition:width .6s}
+.pv{font-family:var(--mono);font-size:11px;color:var(--t3);width:34px;text-align:right}
+
+/* Toggle */
+.tr-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.tr-row:last-child{border-bottom:none}
+.tn{font-size:13px;font-weight:400;color:var(--t1)}
+.td-sub{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:1px}
+.tog{width:32px;height:17px;background:var(--surface);border:1px solid var(--border2);border-radius:9px;position:relative;cursor:pointer;transition:all .2s;flex-shrink:0}
+.tog.on{background:var(--blue);border-color:var(--blue)}
+.tog::after{content:'';position:absolute;width:11px;height:11px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s}
+.tog.on::after{transform:translateX(15px)}
+
+/* Bar chart */
+.barchart{display:flex;align-items:flex-end;gap:4px;height:68px;padding:0 2px}
+.bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{width:100%;border-radius:3px 3px 0 0;cursor:default;transition:opacity .15s}
+.bar:hover{opacity:.75}
+.blbl{font-size:9px;font-family:var(--mono);color:var(--t3)}
+
+/* Log */
+.log-e{display:flex;align-items:flex-start;gap:9px;padding:8px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;line-height:1.5}
+.log-e:last-child{border-bottom:none}
+.log-e:hover{background:rgba(255,255,255,.015)}
+.lt{color:var(--t3);white-space:nowrap;flex-shrink:0;min-width:120px}
+.ll{flex-shrink:0;width:48px;font-weight:500}
+.lm{flex-shrink:0;width:62px;color:var(--t2)}
+.lmsg{color:var(--t1);flex:1;word-break:break-all}
+.l-ok{color:var(--green)}.l-info{color:var(--blue)}.l-warn{color:var(--yellow)}.l-err{color:var(--red)}
+
+/* Alert */
+.alrt{padding:10px 13px;border-radius:6px;font-size:12px;border-left:3px solid;margin-bottom:12px;line-height:1.5;color:var(--t2)}
+.ag{background:var(--green-dim);border-color:var(--green)}
+.ay{background:var(--yellow-dim);border-color:var(--yellow)}
+.ar{background:var(--red-dim);border-color:var(--red)}
+.ab{background:var(--blue-dim);border-color:var(--blue)}
+
+/* Cookie cards */
+.ck{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border)}
+.ck:last-child{border-bottom:none}
+.ck-ico{font-size:17px;flex-shrink:0;width:24px;text-align:center}
+.ck-name{font-size:13px;font-weight:500;color:var(--t1)}
+.ck-age{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:1px}
+.ck-bar{width:72px;height:3px;background:var(--surface);border-radius:3px;overflow:hidden;flex-shrink:0}
+.ck-fill{height:100%;border-radius:3px;transition:width .5s}
+
+/* Queue rows */
+.qr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.qr:last-child{border-bottom:none}
+.qn{font-family:var(--mono);font-size:12px;color:var(--t2);width:86px;flex-shrink:0}
+.qc{font-size:18px;font-weight:600;letter-spacing:-.02em;font-family:var(--mono)}
+
+/* Platform error rows */
+.prow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:none}
+.pico{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.pnm{font-size:13px;font-weight:400;color:var(--t1);flex:1}
+.pbar{width:72px;height:3px;background:var(--surface);border-radius:3px;overflow:hidden;flex-shrink:0}
+.pfill{height:100%;border-radius:3px}
+
+/* Map rows */
+.mrow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border)}
+.mrow:last-child{border-bottom:none}
+.mcode{font-family:var(--mono);font-size:10px;background:var(--surface);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--t3);width:30px;text-align:center;flex-shrink:0}
+.mcty{font-size:12px;color:var(--t1);flex:1}
+.mbar{width:90px;height:3px;background:var(--surface);border-radius:3px;overflow:hidden;flex-shrink:0}
+.mfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:3px}
+.mcnt{font-family:var(--mono);font-size:11px;color:var(--t3);width:36px;text-align:right;flex-shrink:0}
+
+/* Filter bar */
+.fbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px}
+
+/* Modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:500;align-items:center;justify-content:center;padding:14px}
+.modal.open{display:flex}
+.mbox{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:18px;width:100%;max-width:380px}
+.mttl{font-size:14px;font-weight:600;margin-bottom:14px}
+.mfoot{display:flex;gap:7px;justify-content:flex-end;margin-top:14px}
+
+/* Responsive */
+@media(max-width:1024px){.stat-grid{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:250px}
+  .sidebar.open{transform:translateX(0)}
+  .overlay.open{display:block}
+  .main{margin-left:0}
+  .hbg{display:flex}
+  .topbar{padding-left:48px}
+  .g2,.g3{grid-template-columns:1fr}
+  .clock{display:none}
+  .content{padding:12px}
+}
+@media(max-width:480px){
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .sv{font-size:18px}
+  .mbox{padding:14px}
+}
+</style>
+</head>
+<body>
+
+<button class="hbg" onclick="toggleSb()">☰</button>
+<div class="overlay" id="ov" onclick="closeSb()"></div>
+
+<div class="layout">
+<aside class="sidebar" id="sb">
+  <div class="sb-logo">
+    <div class="sb-tag">v3.2 · admin</div>
+    <div class="sb-name">AiSocialFeed</div>
+    <div class="sb-url">admin.aisocialfeed.com</div>
+  </div>
+
+  <div class="nav-sec">Overview</div>
+  <div class="nav-lnk active" onclick="show('dashboard',this)"><span class="ic">◼</span>Dashboard</div>
+
+  <div class="nav-sec">Monitoring</div>
+  <div class="nav-lnk" onclick="show('cookies',this)"><span class="ic">🍪</span>Cookie Status<span class="nb nb-y">!</span></div>
+  <div class="nav-lnk" onclick="show('queues',this)"><span class="ic">⚡</span>Celery Queues</div>
+  <div class="nav-lnk" onclick="show('platforms',this)"><span class="ic">📡</span>Platform Errors</div>
+  <div class="nav-lnk" onclick="show('webhook',this)"><span class="ic">🔗</span>Webhook Monitor</div>
+
+  <div class="nav-sec">Revenue</div>
+  <div class="nav-lnk" onclick="show('revenue',this)"><span class="ic">💰</span>Revenue</div>
+
+  <div class="nav-sec">Management</div>
+  <div class="nav-lnk" onclick="show('users',this)"><span class="ic">👤</span>Users<span class="nb nb-g">1,247</span></div>
+  <div class="nav-lnk" onclick="show('subscriptions',this)"><span class="ic">📦</span>Subscriptions</div>
+  <div class="nav-lnk" onclick="show('transactions',this)"><span class="ic">💳</span>Transactions<span class="nb nb-r">7</span></div>
+  <div class="nav-lnk" onclick="show('tickets',this)"><span class="ic">🎫</span>Support<span class="nb nb-r">4</span></div>
+
+  <div class="nav-sec">Config</div>
+  <div class="nav-lnk" onclick="show('plans',this)"><span class="ic">⚙️</span>Plan Config</div>
+  <div class="nav-lnk" onclick="show('banner',this)"><span class="ic">📢</span>System Banner</div>
+  <div class="nav-lnk" onclick="show('broadcast',this)"><span class="ic">📣</span>Broadcast</div>
+
+  <div class="nav-sec">Analytics</div>
+  <div class="nav-lnk" onclick="show('usermap',this)"><span class="ic">🌍</span>User Map</div>
+  <div class="nav-lnk" onclick="show('logs',this)"><span class="ic">📋</span>System Logs</div>
+
+  <div class="sb-foot">
+    <div class="sys-pill"><span class="dot"></span><span class="sys-txt">All systems live</span></div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="tbt">Dashboard</div>
+    <div class="tb-right">
+      <div class="clock" id="clk">00:00:00 UTC</div>
+      <div class="av">A</div>
+    </div>
+  </div>
+  <div class="content">
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="section active">
+    <div class="stat-grid">
+      <div class="sc cb"><span class="sd su">+12%</span><div class="sv">1,247</div><div class="sl">Total Users</div></div>
+      <div class="sc cg"><span class="sd su">+8%</span><div class="sv">$2,184</div><div class="sl">Revenue MTD</div></div>
+      <div class="sc co"><span class="sd su">+5%</span><div class="sv">$4,020</div><div class="sl">MRR</div></div>
+      <div class="sc cp"><span class="sd su">+21%</span><div class="sv">9,841</div><div class="sl">AI Calls Today</div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="ch"><span class="ct">Posts Delivered — 7 Days</span></div><div class="cb"><div class="barchart" id="pc"></div></div></div>
+      <div class="card"><div class="ch"><span class="ct">Plan Distribution</span></div><div class="cb">
+        <div class="pr"><span class="pl">Free</span><div class="pt"><div class="pf" style="width:68%;background:var(--t3)"></div></div><span class="pv">848</span></div>
+        <div class="pr"><span class="pl">Pro</span><div class="pt"><div class="pf" style="width:22%;background:var(--blue)"></div></div><span class="pv">274</span></div>
+        <div class="pr"><span class="pl">Premium</span><div class="pt"><div class="pf" style="width:10%;background:var(--gold)"></div></div><span class="pv">125</span></div>
+      </div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="ch"><span class="ct">Server Resources</span><span class="cs">deVPS4 · Ubuntu 24.04</span></div><div class="cb">
+        <div class="pr"><span class="pl">CPU</span><div class="pt"><div class="pf" style="width:23%;background:var(--green)"></div></div><span class="pv">23%</span></div>
+        <div class="pr"><span class="pl">RAM</span><div class="pt"><div class="pf" style="width:61%;background:var(--blue)"></div></div><span class="pv">61%</span></div>
+        <div class="pr"><span class="pl">Disk</span><div class="pt"><div class="pf" style="width:38%;background:var(--yellow)"></div></div><span class="pv">38%</span></div>
+      </div></div>
+      <div class="card"><div class="ch"><span class="ct">Celery Queue Summary</span></div><div class="cb">
+        <div class="qr"><span class="qn">platforms</span><div class="pt" style="flex:1"><div class="pf" style="width:83%;background:var(--blue)"></div></div><span class="qc" style="color:var(--blue)">247</span></div>
+        <div class="qr"><span class="qn">default</span><div class="pt" style="flex:1"><div class="pf" style="width:4%;background:var(--green)"></div></div><span class="qc" style="color:var(--green)">12</span></div>
+        <div class="qr"><span class="qn">ai</span><div class="pt" style="flex:1"><div class="pf" style="width:10%;background:var(--purple)"></div></div><span class="qc" style="color:var(--purple)">31</span></div>
+        <div class="qr"><span class="qn">downloads</span><div class="pt" style="flex:1"><div class="pf" style="width:3%;background:var(--yellow)"></div></div><span class="qc" style="color:var(--yellow)">8</span></div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- COOKIES -->
+  <section id="cookies" class="section">
+    <div class="alrt ay">Instagram cookie expired — posts from Instagram have stopped. Paste a new cookie below.</div>
+    <div class="g2">
+      <div class="card mb">
+        <div class="ch"><span class="ct">Cookie Status</span><span class="cs">From Redis</span></div>
+        <div class="cb">
+          <div class="ck"><span class="ck-ico">🐦</span><div style="flex:1"><div class="ck-name">Twitter / X</div><div class="ck-age">8 days ago</div></div><div class="ck-bar"><div class="ck-fill" id="ckb-tw" style="width:32%;background:var(--green)"></div></div><span class="bdg b-ok" id="ckbdg-tw">OK</span></div>
+          <div class="ck"><span class="ck-ico">📸</span><div style="flex:1"><div class="ck-name">Instagram</div><div class="ck-age" id="ckage-ig">32 days ago</div></div><div class="ck-bar"><div class="ck-fill" id="ckb-ig" style="width:100%;background:var(--red)"></div></div><span class="bdg b-err" id="ckbdg-ig">EXPIRED</span></div>
+          <div class="ck"><span class="ck-ico">🎵</span><div style="flex:1"><div class="ck-name">TikTok</div><div class="ck-age">19 days ago</div></div><div class="ck-bar"><div class="ck-fill" id="ckb-tt" style="width:76%;background:var(--yellow)"></div></div><span class="bdg b-warn" id="ckbdg-tt">WARNING</span></div>
+        </div>
+      </div>
+      <div class="card mb">
+        <div class="ch"><span class="ct">Update Cookie</span><span class="cs">No SSH · No restart</span></div>
+        <div class="cb">
+          <div class="fld"><label>Platform</label>
+            <select class="inp" id="ck-plat" onchange="ckHint()">
+              <option value="twitter">Twitter / X</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+            </select>
+          </div>
+          <div class="fld"><label>Cookie string</label>
+            <textarea class="inp" id="ck-val" rows="3" placeholder="auth_token=XXXXX; ct0=YYYYY" style="font-family:var(--mono);font-size:11px"></textarea>
+          </div>
+          <div id="ck-hint" style="font-size:11px;color:var(--t3);margin-bottom:11px;line-height:1.6">F12 → Application → Cookies → twitter.com → Copy auth_token + ct0</div>
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+            <button class="btn bp" onclick="saveCk()" id="ck-btn">Save Cookie</button>
+            <span id="ck-res" style="font-size:11px;font-family:var(--mono)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Step-by-step guide</span></div>
+      <div class="cb">
+        <div class="g3" style="margin-bottom:0">
+          <div><div style="font-size:10px;font-weight:600;color:var(--blue);font-family:var(--mono);margin-bottom:7px;letter-spacing:.05em">TWITTER / X</div><div style="font-size:12px;color:var(--t2);line-height:1.9">1. Chrome Incognito<br>2. Login to twitter.com<br>3. F12 → Application → Cookies<br>4. Copy <code style="font-family:var(--mono);color:var(--t1)">auth_token</code><br>5. Copy <code style="font-family:var(--mono);color:var(--t1)">ct0</code><br>6. Paste: auth_token=X; ct0=Y</div></div>
+          <div><div style="font-size:10px;font-weight:600;color:var(--blue);font-family:var(--mono);margin-bottom:7px;letter-spacing:.05em">INSTAGRAM</div><div style="font-size:12px;color:var(--t2);line-height:1.9">1. Chrome Incognito<br>2. Login to instagram.com<br>3. F12 → Application → Cookies<br>4. Copy <code style="font-family:var(--mono);color:var(--t1)">sessionid</code><br>5. Copy <code style="font-family:var(--mono);color:var(--t1)">csrftoken</code><br>6. Paste: sessionid=X; csrftoken=Y</div></div>
+          <div><div style="font-size:10px;font-weight:600;color:var(--blue);font-family:var(--mono);margin-bottom:7px;letter-spacing:.05em">TIKTOK</div><div style="font-size:12px;color:var(--t2);line-height:1.9">1. Chrome Incognito<br>2. Login to tiktok.com<br>3. F12 → Application → Cookies<br>4. Copy <code style="font-family:var(--mono);color:var(--t1)">sessionid</code><br>5. Copy <code style="font-family:var(--mono);color:var(--t1)">ttwid</code><br>6. Paste: sessionid=X; ttwid=Y</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUEUES -->
+  <section id="queues" class="section">
+    <div class="stat-grid">
+      <div class="sc cb"><div class="sv">298</div><div class="sl">Total</div></div>
+      <div class="sc cb"><div class="sv">247</div><div class="sl">Platform Fetches</div></div>
+      <div class="sc cp"><div class="sv">31</div><div class="sl">AI Tasks</div></div>
+      <div class="sc cy"><div class="sv">8</div><div class="sl">Downloads</div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Queue Details</span><span class="cs">refreshes every 30s</span><button class="btn bg bsm" style="margin-left:8px">Refresh</button></div>
+      <div class="cb">
+        <div class="qr"><span class="qn">platforms</span><div class="pt" style="flex:1;margin:0 12px"><div class="pf" style="width:83%;background:var(--blue)"></div></div><span class="qc" style="color:var(--blue)">247</span><span class="bdg b-ok" style="margin-left:9px">Normal</span></div>
+        <div class="qr"><span class="qn">default</span><div class="pt" style="flex:1;margin:0 12px"><div class="pf" style="width:4%;background:var(--green)"></div></div><span class="qc" style="color:var(--green)">12</span><span class="bdg b-ok" style="margin-left:9px">Normal</span></div>
+        <div class="qr"><span class="qn">ai</span><div class="pt" style="flex:1;margin:0 12px"><div class="pf" style="width:10%;background:var(--purple)"></div></div><span class="qc" style="color:var(--purple)">31</span><span class="bdg b-ok" style="margin-left:9px">Normal</span></div>
+        <div class="qr"><span class="qn">downloads</span><div class="pt" style="flex:1;margin:0 12px"><div class="pf" style="width:3%;background:var(--yellow)"></div></div><span class="qc" style="color:var(--yellow)">8</span><span class="bdg b-ok" style="margin-left:9px">Normal</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLATFORM ERRORS -->
+  <section id="platforms" class="section">
+    <div class="card">
+      <div class="ch"><span class="ct">Platform Error Rates</span><span class="cs">Last 1 hour</span></div>
+      <div class="cb">
+        <div class="prow"><span class="pico">🎬</span><span class="pnm">YouTube</span><div class="pbar"><div class="pfill" style="width:0%;background:var(--green)"></div></div><span class="bdg b-ok" style="margin-left:9px">0%</span></div>
+        <div class="prow"><span class="pico">🐦</span><span class="pnm">Twitter / X</span><div class="pbar"><div class="pfill" style="width:12%;background:var(--blue)"></div></div><span class="bdg b-ok" style="margin-left:9px">12%</span></div>
+        <div class="prow"><span class="pico">📸</span><span class="pnm">Instagram</span><div class="pbar"><div class="pfill" style="width:100%;background:var(--red)"></div></div><span class="bdg b-err" style="margin-left:9px">100%</span></div>
+        <div class="prow"><span class="pico">🎵</span><span class="pnm">TikTok</span><div class="pbar"><div class="pfill" style="width:8%;background:var(--green)"></div></div><span class="bdg b-ok" style="margin-left:9px">8%</span></div>
+        <div class="prow"><span class="pico">🤖</span><span class="pnm">Reddit</span><div class="pbar"><div class="pfill" style="width:0%;background:var(--green)"></div></div><span class="bdg b-ok" style="margin-left:9px">0%</span></div>
+        <div class="prow"><span class="pico">🧵</span><span class="pnm">Threads</span><div class="pbar"><div class="pfill" style="width:45%;background:var(--yellow)"></div></div><span class="bdg b-warn" style="margin-left:9px">45%</span></div>
+        <div class="prow"><span class="pico">👥</span><span class="pnm">Facebook</span><div class="pbar"><div class="pfill" style="width:100%;background:var(--red)"></div></div><span class="bdg b-err" style="margin-left:9px">100%</span></div>
+        <div class="prow"><span class="pico">✈️</span><span class="pnm">Telegram</span><div class="pbar"><div class="pfill" style="width:0%;background:var(--green)"></div></div><span class="bdg b-ok" style="margin-left:9px">0%</span></div>
+        <div class="prow"><span class="pico">📡</span><span class="pnm">RSS</span><div class="pbar"><div class="pfill" style="width:2%;background:var(--green)"></div></div><span class="bdg b-ok" style="margin-left:9px">2%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WEBHOOK -->
+  <section id="webhook" class="section">
+    <div class="stat-grid">
+      <div class="sc cg"><div class="sv">99.7%</div><div class="sl">Success Rate 1h</div></div>
+      <div class="sc cb"><div class="sv">99.2%</div><div class="sl">Success Rate 24h</div></div>
+      <div class="sc cy"><div class="sv">3</div><div class="sl">Failed Last Hour</div></div>
+      <div class="sc cp"><div class="sv">1,041</div><div class="sl">Total Today</div></div>
+    </div>
+    <div class="card"><div class="ch"><span class="ct">Activity — Last 12 Hours</span></div><div class="cb"><div class="barchart" id="whc"></div></div></div>
+  </section>
+
+  <!-- REVENUE -->
+  <section id="revenue" class="section">
+    <div class="stat-grid">
+      <div class="sc cg"><div class="sv">$4,020</div><div class="sl">MRR</div></div>
+      <div class="sc cb"><div class="sv">$2,184</div><div class="sl">This Month</div></div>
+      <div class="sc co"><div class="sv">$648</div><div class="sl">Last 7 Days</div></div>
+      <div class="sc cr"><div class="sv">12</div><div class="sl">Churned 30d</div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="ch"><span class="ct">Daily Revenue — 30 Days</span></div><div class="cb"><div class="barchart" id="rc"></div></div></div>
+      <div class="card"><div class="ch"><span class="ct">Breakdown</span></div><div class="cb">
+        <div class="pr"><span class="pl">Pro ×274</span><div class="pt"><div class="pf" style="width:57%;background:var(--blue)"></div></div><span class="pv">$1,644</span></div>
+        <div class="pr"><span class="pl">Prem ×125</span><div class="pt"><div class="pf" style="width:43%;background:var(--gold)"></div></div><span class="pv">$1,250</span></div>
+        <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px"><span style="color:var(--t3)">New this month</span><span style="color:var(--green)">+47</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px"><span style="color:var(--t3)">Churned</span><span style="color:var(--red)">-12</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:var(--t3)">Net growth</span><span style="color:var(--blue)">+35</span></div>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section id="users" class="section">
+    <div class="fbar">
+      <input class="inp" style="width:180px;margin-bottom:0" placeholder="Search ID / username...">
+      <select class="inp" style="width:130px;margin-bottom:0"><option>All Plans</option><option>Free</option><option>Pro</option><option>Premium</option></select>
+      <button class="btn bp bsm">Search</button>
+      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <a href="/api/users/export/?format=csv" class="btn bg bsm">CSV</a>
+        <a href="/api/users/export/?format=json" class="btn bg bsm">JSON</a>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Users</span><span class="cs">1,247 total</span></div>
+      <div class="tw"><table>
+        <thead><tr><th>Telegram ID</th><th>Username</th><th>Plan</th><th>Expires</th><th>Lang</th><th>Last Active</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">123456789</td><td>@ali_dev</td><td><span class="bdg b-prem">Premium</span></td><td class="mn">2025-08-14</td><td class="mn">fa</td><td class="mn">2 min ago</td><td><span class="bdg b-ok">Active</span></td><td><div style="display:flex;gap:4px"><button class="btn bg bsm" onclick="openMdl(1,'premium')">Manage</button><button class="btn bd bsm">Ban</button></div></td></tr>
+          <tr><td class="mn">987654321</td><td>@sara_kh</td><td><span class="bdg b-pro">Pro</span></td><td class="mn">2025-07-30</td><td class="mn">en</td><td class="mn">1h ago</td><td><span class="bdg b-ok">Active</span></td><td><div style="display:flex;gap:4px"><button class="btn bg bsm" onclick="openMdl(2,'pro')">Manage</button><button class="btn bd bsm">Ban</button></div></td></tr>
+          <tr><td class="mn">555000111</td><td>@john_doe</td><td><span class="bdg b-free">Free</span></td><td class="mn">—</td><td class="mn">en</td><td class="mn">3d ago</td><td><span class="bdg b-warn">Inactive</span></td><td><div style="display:flex;gap:4px"><button class="btn bg bsm" onclick="openMdl(3,'free')">Manage</button><button class="btn bd bsm">Ban</button></div></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- SUBSCRIPTIONS -->
+  <section id="subscriptions" class="section">
+    <div class="card">
+      <div class="ch"><span class="ct">Manual Subscription</span></div>
+      <div class="cb">
+        <div class="alrt ab" style="margin-bottom:14px">Grant, extend, or revoke without a payment. For influencers, testers, refunds, or support cases.</div>
+        <div class="g2">
+          <div class="fld"><label>Telegram User ID</label><input class="inp" placeholder="e.g. 123456789" id="sub-uid"></div>
+          <div class="fld"><label>Action</label><select class="inp" id="sub-act"><option value="grant">Grant</option><option value="extend">Extend</option><option value="revoke">Revoke</option></select></div>
+          <div class="fld"><label>Plan</label><select class="inp" id="sub-plan"><option value="pro">Pro</option><option value="premium">Premium</option></select></div>
+          <div class="fld"><label>Days</label><input class="inp" value="30" id="sub-days"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+          <button class="btn bp" onclick="applySub()">Apply</button>
+          <span id="sub-res" style="font-size:11px;font-family:var(--mono);color:var(--green)"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section id="transactions" class="section">
+    <div class="alrt ay">7 transactions pending review.</div>
+    <div class="card">
+      <div class="ch"><span class="ct">Transactions</span></div>
+      <div class="tw"><table>
+        <thead><tr><th>#</th><th>User</th><th>Plan</th><th>Amount</th><th>Network</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td class="mn">#1041</td><td>@ali_dev</td><td><span class="bdg b-prem">Premium</span></td><td class="mn" style="color:var(--green)">$10.00</td><td><span class="bdg b-gray">TRC20</span></td><td><span class="bdg b-warn">PENDING</span></td><td class="mn">2025-05-30</td><td><div style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn bs bsm">Approve</button><button class="btn bw bsm" onclick="retryPay(1041)">Retry</button><button class="btn bd bsm">Reject</button></div></td></tr>
+          <tr><td class="mn">#1040</td><td>@sara_kh</td><td><span class="bdg b-pro">Pro</span></td><td class="mn" style="color:var(--green)">$57.60</td><td><span class="bdg b-gray">BEP20</span></td><td><span class="bdg b-ok">APPROVED</span></td><td class="mn">2025-05-29</td><td><span class="mn" style="color:var(--t3)">auto-verified</span></td></tr>
+          <tr><td class="mn">#1039</td><td>@media_fan</td><td><span class="bdg b-prem">Premium</span></td><td class="mn">$5.80</td><td><span class="bdg b-gray">TRC20</span></td><td><span class="bdg b-err">REJECTED</span></td><td class="mn">2025-05-27</td><td><button class="btn bw bsm" onclick="retryPay(1039)">Retry</button></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- SUPPORT -->
+  <section id="tickets" class="section">
+    <div class="card">
+      <div class="ch"><span class="ct">Support Tickets</span><span class="cs">4 open</span></div>
+      <div class="tw"><table>
+        <thead><tr><th>Ticket</th><th>User</th><th>Subject</th><th>Status</th><th>Plan</th><th>Opened</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="mn">TKT-041</td><td>@media_fan</td><td>Instagram feed stopped</td><td><span class="bdg b-err">Open</span></td><td><span class="bdg b-prem">Premium</span></td><td class="mn">1h ago</td><td><button class="btn bp bsm">Reply</button></td></tr>
+          <tr><td class="mn">TKT-040</td><td>@ali_dev</td><td>Custom interval question</td><td><span class="bdg b-warn">Answered</span></td><td><span class="bdg b-prem">Premium</span></td><td class="mn">5h ago</td><td><button class="btn bg bsm">View</button></td></tr>
+          <tr><td class="mn">TKT-039</td><td>@sara_kh</td><td>Payment not activated</td><td><span class="bdg b-err">Open</span></td><td><span class="bdg b-pro">Pro</span></td><td class="mn">1d ago</td><td><button class="btn bp bsm">Reply</button></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- PLAN CONFIG -->
+  <section id="plans" class="section">
+    <div class="g3">
+      <div class="card">
+        <div class="ch"><span class="ct">Free</span><span class="cs">$0</span></div>
+        <div class="cb">
+          <div class="fld"><label>Max Accounts</label><input class="inp" value="5"></div>
+          <div class="fld"><label>Fetch Interval (min)</label><input class="inp" value="60"></div>
+          <div class="tr-row"><div><div class="tn">AI Features</div><div class="td-sub">Summary & translation</div></div><div class="tog"></div></div>
+          <div class="tr-row"><div><div class="tn">Channel Forward</div></div><div class="tog"></div></div>
+          <button class="btn bp" style="width:100%;margin-top:12px">Save</button>
+        </div>
+      </div>
+      <div class="card" style="border-color:rgba(59,130,246,.3)">
+        <div class="ch" style="background:var(--blue-dim)"><span class="ct" style="color:var(--blue)">Pro</span><span class="cs" style="color:var(--blue)">$6 / mo</span></div>
+        <div class="cb">
+          <div class="fld"><label>Max Accounts</label><input class="inp" value="40"></div>
+          <div class="fld"><label>Price Monthly ($)</label><input class="inp" value="6.00"></div>
+          <div class="fld"><label>Price Yearly ($)</label><input class="inp" value="57.60"></div>
+          <div class="tr-row"><div><div class="tn">CSV Export</div></div><div class="tog on"></div></div>
+          <div class="tr-row"><div><div class="tn">Channel Forward</div></div><div class="tog on"></div></div>
+          <button class="btn bp" style="width:100%;margin-top:12px">Save</button>
+        </div>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.3)">
+        <div class="ch" style="background:var(--gold-dim)"><span class="ct" style="color:var(--gold)">Premium</span><span class="cs" style="color:var(--gold)">$10 / mo</span></div>
+        <div class="cb">
+          <div class="fld"><label>Max Accounts</label><input class="inp" value="100"></div>
+          <div class="fld"><label>Price Monthly ($)</label><input class="inp" value="10.00"></div>
+          <div class="fld"><label>Price Yearly ($)</label><input class="inp" value="96.00"></div>
+          <div class="tr-row"><div><div class="tn">AI Features</div></div><div class="tog on"></div></div>
+          <div class="tr-row"><div><div class="tn">Daily Digest</div></div><div class="tog on"></div></div>
+          <button class="btn bp" style="width:100%;margin-top:12px">Save</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BANNER -->
+  <section id="banner" class="section">
+    <div class="card mb">
+      <div class="ch"><span class="ct">Active Banner</span></div>
+      <div class="cb"><div id="active-banner" class="alrt ag" style="margin-bottom:0">No active banner. Bot is running normally.</div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">Set Banner</span></div>
+      <div class="cb">
+        <div class="fld"><label>Message</label><textarea class="inp" id="bm" rows="3" placeholder="e.g. Maintenance from 02:00 to 02:30 UTC."></textarea></div>
+        <div class="fld"><label>Type</label><select class="inp" id="bt"><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn bp" onclick="setBan()">Set Banner</button>
+          <button class="btn bd" onclick="clearBan()">Clear</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BROADCAST -->
+  <section id="broadcast" class="section">
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><span class="ct">Send Broadcast</span></div>
+        <div class="cb">
+          <div class="fld"><label>Target</label><select class="inp"><option>All Users (1,247)</option><option>Free (848)</option><option>Pro (274)</option><option>Premium (125)</option></select></div>
+          <div class="fld"><label>Message (HTML supported)</label><textarea class="inp" rows="5" placeholder="Type your message..."></textarea></div>
+          <div class="fld"><label>Rate</label><select class="inp"><option>1 msg/sec (recommended)</option><option>5 msg/sec</option></select></div>
+          <button class="btn bp" style="margin-top:4px">Send</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Recent Broadcasts</span></div>
+        <div class="cb">
+          <div style="border-bottom:1px solid var(--border);padding-bottom:11px;margin-bottom:11px"><div style="font-size:13px;font-weight:500;margin-bottom:3px">New Premium features live!</div><div style="font-size:11px;color:var(--t3);font-family:var(--mono)">2025-05-28 · All · 1,231 sent · 16 failed</div></div>
+          <div style="border-bottom:1px solid var(--border);padding-bottom:11px;margin-bottom:11px"><div style="font-size:13px;font-weight:500;margin-bottom:3px">Maintenance — 30 min</div><div style="font-size:11px;color:var(--t3);font-family:var(--mono)">2025-05-20 · All · 1,198 sent</div></div>
+          <div><div style="font-size:13px;font-weight:500;margin-bottom:3px">Pro plan now $6/mo</div><div style="font-size:11px;color:var(--t3);font-family:var(--mono)">2025-05-15 · Free · 812 sent</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USER MAP -->
+  <section id="usermap" class="section">
+    <div class="card">
+      <div class="ch"><span class="ct">User Distribution by Language</span><span class="cs">1,247 users</span><a href="/api/users/export/?format=csv" class="btn bg bsm" style="margin-left:8px">Export CSV</a></div>
+      <div class="cb">
+        <div class="mrow"><span class="mcode">fa</span><span class="mcty">Iran / Farsi</span><div class="mbar"><div class="mfill" style="width:100%"></div></div><span class="mcnt">811</span></div>
+        <div class="mrow"><span class="mcode">en</span><span class="mcty">English</span><div class="mbar"><div class="mfill" style="width:28%"></div></div><span class="mcnt">224</span></div>
+        <div class="mrow"><span class="mcode">ar</span><span class="mcty">Arabic</span><div class="mbar"><div class="mfill" style="width:12%"></div></div><span class="mcnt">100</span></div>
+        <div class="mrow"><span class="mcode">ru</span><span class="mcty">Russia</span><div class="mbar"><div class="mfill" style="width:6%"></div></div><span class="mcnt">50</span></div>
+        <div class="mrow"><span class="mcode">tr</span><span class="mcty">Turkey</span><div class="mbar"><div class="mfill" style="width:3%"></div></div><span class="mcnt">25</span></div>
+        <div class="mrow"><span class="mcode">zh</span><span class="mcty">China</span><div class="mbar"><div class="mfill" style="width:2%"></div></div><span class="mcnt">18</span></div>
+        <div class="mrow"><span class="mcode">de</span><span class="mcty">Germany</span><div class="mbar"><div class="mfill" style="width:1%"></div></div><span class="mcnt">10</span></div>
+        <div class="mrow"><span class="mcode">hi</span><span class="mcty">India</span><div class="mbar"><div class="mfill" style="width:1%"></div></div><span class="mcnt">9</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOGS -->
+  <section id="logs" class="section">
+    <div class="fbar">
+      <select class="inp" style="width:120px;margin-bottom:0"><option>All Levels</option><option>ERROR</option><option>WARN</option><option>INFO</option></select>
+      <select class="inp" style="width:130px;margin-bottom:0"><option>All Modules</option><option>FETCH</option><option>AI</option><option>PAYMENT</option><option>SYSTEM</option></select>
+      <button class="btn bg bsm">Refresh</button>
+      <button class="btn bg bsm" style="margin-left:auto">Export JSON</button>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="ct">System Logs</span><span class="cs">last 100</span></div>
+      <div class="log-e"><span class="lt">2025-05-30 14:32</span><span class="ll l-err">ERROR</span><span class="lm">FETCH</span><span class="lmsg">FacebookFetcher: RSSHub returned 403 — cookie expired</span></div>
+      <div class="log-e"><span class="lt">2025-05-30 14:31</span><span class="ll l-ok">INFO</span><span class="lm">PAYMENT</span><span class="lmsg">Transaction #1040 auto-verified — @sara_kh activated Pro yearly</span></div>
+      <div class="log-e"><span class="lt">2025-05-30 14:30</span><span class="ll l-ok">INFO</span><span class="lm">AI</span><span class="lmsg">process_post: summary+translate completed in 1.2s</span></div>
+      <div class="log-e"><span class="lt">2025-05-30 14:29</span><span class="ll l-warn">WARN</span><span class="lm">FETCH</span><span class="lmsg">InstagramFetcher: cookie expires in 3 days</span></div>
+      <div class="log-e"><span class="lt">2025-05-30 14:25</span><span class="ll l-ok">INFO</span><span class="lm">CELERY</span><span class="lmsg">cleanup_old_posts: removed 4,211 records older than 90 days</span></div>
+      <div class="log-e"><span class="lt">2025-05-30 14:20</span><span class="ll l-err">ERROR</span><span class="lm">PAYMENT</span><span class="lmsg">tx_id=1039: amount 5.80 below expected 6.00</span></div>
+    </div>
+  </section>
+
+  </div><!-- content -->
+</div><!-- main -->
+</div><!-- layout -->
+
+<!-- Modal -->
+<div class="modal" id="mdl">
+  <div class="mbox">
+    <div class="mttl">Manage Subscription</div>
+    <div class="fld"><label>Action</label><select class="inp" id="m-act"><option value="grant">Grant</option><option value="extend">Extend</option><option value="revoke">Revoke</option></select></div>
+    <div class="fld"><label>Plan</label><select class="inp" id="m-plan"><option value="pro">Pro</option><option value="premium">Premium</option></select></div>
+    <div class="fld"><label>Days</label><input class="inp" id="m-days" value="30"></div>
+    <div class="mfoot"><button class="btn bg" onclick="closeMdl()">Cancel</button><button class="btn bp" onclick="confirmMdl()">Apply</button></div>
+  </div>
+</div>
+
+<script>
+let muid=null;
+
+// Clock
+setInterval(()=>{
+  document.getElementById('clk').textContent=
+    new Date().toISOString().replace('T',' ').substring(0,19)+' UTC';
+},1000);
+
+// Navigation
+function show(id,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-lnk').forEach(n=>n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('tbt').textContent=
+    el.textContent.trim().replace(/[\d,!]+/g,'').trim();
+  closeSb();
+}
+
+// Sidebar
+function toggleSb(){document.getElementById('sb').classList.toggle('open');document.getElementById('ov').classList.toggle('open')}
+function closeSb(){document.getElementById('sb').classList.remove('open');document.getElementById('ov').classList.remove('open')}
+
+// Toggles
+document.querySelectorAll('.tog').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+
+// Charts
+function mkChart(id,data,color,labels){
+  const el=document.getElementById(id);if(!el)return;
+  const mx=Math.max(...data);
+  data.forEach((v,i)=>{
+    const w=document.createElement('div');w.className='bw';
+    const b=document.createElement('div');b.className='bar';
+    b.style.cssText=`height:${Math.max(2,Math.round(v/mx*62))}px;background:${Array.isArray(color)?color[i]:color};opacity:${i===data.length-1?1:0.45}`;
+    if(labels){const l=document.createElement('div');l.className='blbl';l.textContent=labels[i];w.appendChild(b);w.appendChild(l);}
+    else w.appendChild(b);
+    el.appendChild(w);
+  });
+}
+
+mkChart('pc',[31200,38100,35400,41200,38900,43100,38492],'var(--blue)',['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
+mkChart('rc',[0,120,0,80,200,0,45,180,0,90,300,120,0,0,85,200,0,130,95,0,200,180,0,120,300,0,0,170,200,148],'var(--blue)');
+mkChart('whc',[41,38,45,52,39,43,47,51,44,38,49,55],'var(--green)',['02','03','04','05','06','07','08','09','10','11','12','13']);
+
+// Cookie
+const CH={
+  twitter:  {ph:'auth_token=XXXXX; ct0=YYYYY',    hint:'F12 → Application → Cookies → twitter.com → Copy auth_token and ct0'},
+  instagram:{ph:'sessionid=XXXXX; csrftoken=YYYYY',hint:'F12 → Application → Cookies → instagram.com → Copy sessionid and csrftoken'},
+  tiktok:   {ph:'sessionid=XXXXX; ttwid=YYYYY',   hint:'F12 → Application → Cookies → tiktok.com → Copy sessionid and ttwid'},
+};
+function ckHint(){
+  const p=document.getElementById('ck-plat').value;
+  document.getElementById('ck-val').placeholder=CH[p].ph;
+  document.getElementById('ck-hint').textContent=CH[p].hint;
+  document.getElementById('ck-val').value='';
+  document.getElementById('ck-res').textContent='';
+}
+async function saveCk(){
+  const p=document.getElementById('ck-plat').value;
+  const v=document.getElementById('ck-val').value.trim();
+  const res=document.getElementById('ck-res');
+  const btn=document.getElementById('ck-btn');
+  if(!v){res.style.color='var(--red)';res.textContent='Paste the cookie string first';return;}
+  btn.textContent='Saving...';btn.disabled=true;res.textContent='';
+  await new Promise(r=>setTimeout(r,600));
+  // Production: fetch('/api/cookies/update/',{method:'POST',body:JSON.stringify({platform:p,cookie:v}),headers:{'Content-Type':'application/json'}})
+  res.style.color='var(--green)';
+  res.textContent=p+' cookie saved — takes effect immediately';
+  const bars={twitter:'ckb-tw',instagram:'ckb-ig',tiktok:'ckb-tt'};
+  const bdgs={twitter:'ckbdg-tw',instagram:'ckbdg-ig',tiktok:'ckbdg-tt'};
+  const b=document.getElementById(bars[p]);if(b){b.style.width='4%';b.style.background='var(--green)';}
+  const d=document.getElementById(bdgs[p]);if(d){d.className='bdg b-ok';d.textContent='OK';}
+  document.getElementById('ck-val').value='';
+  btn.textContent='Save Cookie';btn.disabled=false;
+}
+
+// Payment retry
+function retryPay(id){if(confirm('Retry transaction #'+id+'?'))alert('Retry queued for #'+id);}
+
+// Subscription modal
+function openMdl(uid,plan){muid=uid;if(plan!=='free')document.getElementById('m-plan').value=plan;document.getElementById('mdl').classList.add('open');}
+function closeMdl(){document.getElementById('mdl').classList.remove('open');}
+function confirmMdl(){
+  const a=document.getElementById('m-act').value;
+  const p=document.getElementById('m-plan').value;
+  const d=document.getElementById('m-days').value;
+  alert('Applied: '+a+' '+p+' '+d+'d → user '+muid);
+  closeMdl();
+}
+document.getElementById('mdl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeMdl();});
+
+// Inline subscription
+function applySub(){
+  const uid=document.getElementById('sub-uid').value;
+  if(!uid){alert('Enter a Telegram User ID');return;}
+  document.getElementById('sub-res').textContent=
+    'Done: '+document.getElementById('sub-act').value+' '+
+    document.getElementById('sub-plan').value+' '+
+    document.getElementById('sub-days').value+'d → user '+uid;
+}
+
+// Banner
+function setBan(){
+  const msg=document.getElementById('bm').value;
+  const type=document.getElementById('bt').value;
+  if(!msg){alert('Enter a message');return;}
+  const el=document.getElementById('active-banner');
+  el.className='alrt '+(type==='critical'?'ar':type==='warning'?'ay':'ab');
+  el.textContent=msg;
+}
+function clearBan(){
+  const el=document.getElementById('active-banner');
+  el.className='alrt ag';
+  el.textContent='No active banner. Bot is running normally.';
+}
+</script>
+</body>
+</html>
