@@ -156,21 +156,36 @@ async def cb_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
 
 
+def _txid_button(plan: str, period: str, lang: str) -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        t("subscription.select_network", lang),
+        callback_data=f"pay:txid:{plan}:{period}"
+    )
+
+def _screenshot_button(plan: str, period: str, lang: str) -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        t("subscription.confirm_network", lang),
+        callback_data=f"pay:screenshot:{plan}:{period}"
+    )
+
+def _mastercard_button() -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        "💳 Mastercard — Coming Soon",
+        callback_data="pay:mastercard"
+    )
+
+def _back_button(plan: str, lang: str) -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        t("menu.back", lang),
+        callback_data=f"sub:plan:{plan}"
+    )
+
 def _payment_buttons(plan: str, period: str, lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(
-            t("subscription.select_network", lang),
-            callback_data=f"pay:txid:{plan}:{period}"
-        )],
-        [InlineKeyboardButton(
-            t("subscription.confirm_network", lang),
-            callback_data=f"pay:screenshot:{plan}:{period}"
-        )],
-        [InlineKeyboardButton(
-            "💳 Mastercard — Coming Soon",
-            callback_data="pay:mastercard"
-        )],
-        [InlineKeyboardButton(t("menu.back", lang), callback_data=f"sub:plan:{plan}")],
+        [_txid_button(plan, period, lang)],
+        [_screenshot_button(plan, period, lang)],
+        [_mastercard_button()],
+        [_back_button(plan, lang)],
     ])
 
 
