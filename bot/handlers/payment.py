@@ -25,7 +25,7 @@ from bot.models import (
     PlanConfig, PlanType, SubscriptionPeriod,
     Transaction, TransactionMethod, TransactionStatus, USDTAddress, User,
 )
-from bot.utils.keyboards import main_menu, period_selection, plan_selection
+from bot.utils.keyboards import main_menu, plan_selection
 from bot.utils.telegram_utils import safe_send_message
 from bot.utils.translator import t
 
@@ -79,104 +79,6 @@ async def show_plans(
         reply_markup=plan_selection(lang),
     )
 
-
-# ─────────────────────────────────────────────
-#  Plan → Period → Payment Method
-# ─────────────────────────────────────────────
-
-async def cb_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    user: Optional[User] = context.user_data.get("user")
-    if not user:
-        return
-
-    lang = user.language
-    parts = query.data.split(":")
-
-    if parts[1] == "plans":
-        # Back to plan list
-        await query.edit_message_reply_markup(reply_markup=plan_selection(lang))
-
-    elif parts[1] == "plan":
-        plan_name = parts[2]
-        await query.edit_message_reply_markup(
-            reply_markup=period_selection(plan_name, lang)
-        )
-
-    elif parts[1] == "period":
-        plan_name = parts[2]
-        period_name = parts[3]
-        context.user_data["pending_plan"] = plan_name
-        context.user_data["pending_period"] = period_name
-
-        # Get price and addresses
-        plan_enum = PlanType(plan_name)
-        period_enum = SubscriptionPeriod(period_name)
-
-        async with get_session() as session:
-            from sqlalchemy import select
-            cfg = (await session.execute(
-                select(PlanConfig).where(PlanConfig.plan == plan_enum)
-            )).scalar_one_or_none()
-
-            addresses = (await session.execute(
-                select(USDTAddress).where(USDTAddress.is_active == True)
-                .order_by(USDTAddress.is_default.desc())
-            )).scalars().all()
-
-        price = 0.0
-        if cfg:
-            price = {
-                SubscriptionPeriod.MONTHLY: cfg.price_monthly,
-                SubscriptionPeriod.BIANNUAL: cfg.price_biannual,
-                SubscriptionPeriod.YEARLY: cfg.price_yearly,
-            }.get(period_enum, 0.0)
-
-        context.user_data["pending_amount"] = price
-
-        if not addresses:
-            await query.edit_message_text(
-                "⚠️ Payment is temporarily unavailable. Please try later.",
-                parse_mode=ParseMode.HTML,
-            )
-            return
-
-        addr_text = "\n".join(
-            f"{'🔹' if a.is_default else '▫️'} <b>{a.label}</b>\n   <code>{a.address}</code>"
-            for a in addresses
-        )
-
-        await query.edit_message_text(
-            t("subscription.payment_instructions", lang,
-              amount=f"{price:.2f}", addresses=addr_text),
-            parse_mode=ParseMode.HTML,
-            reply_markup=_payment_buttons(plan_name, period_name, lang),
-        )
-
-
-def _payment_buttons(plan: str, period: str, lang: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(
-            t("subscription.select_network", lang),
-            callback_data=f"pay:txid:{plan}:{period}"
-        )],
-        [InlineKeyboardButton(
-            t("subscription.confirm_network", lang),
-            callback_data=f"pay:screenshot:{plan}:{period}"
-        )],
-        [InlineKeyboardButton(
-            "💳 Mastercard — Coming Soon",
-            callback_data="pay:mastercard"
-        )],
-        [InlineKeyboardButton(t("menu.back", lang), callback_data=f"sub:plan:{plan}")],
-    ])
-
-
-# ─────────────────────────────────────────────
-#  Payment Proof Collection
-# ─────────────────────────────────────────────
 
 async def cb_pay(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
@@ -448,11 +350,10 @@ async def cb_pay_method(update, context):
 
 def register(app: Application) -> None:
     # Plan/period selection callbacks — handles both "sub:" and "pay:back:plans"
-    # v4.2.1 fix: cb_subscription (below) is legacy pre-v4.2 code with no "compare"
-    # or "history" case. It was registered here with pattern=r"^sub:" and, since
-    # payment.py registers before profile.py in main.py, it silently intercepted
-    # every sub:compare / sub:history tap meant for profile.py's cb_sub, which
-    # DOES handle those. Removed from registration.
+    # v4.2.1 fix: legacy cb_subscription was removed because it had no "compare"
+    # or "history" case and was registered with pattern=r"^sub:", which
+    # silently intercepted every sub:compare / sub:history tap meant for
+    # profile.py's cb_sub.
     app.add_handler(CallbackQueryHandler(cb_back_to_plans, pattern=r"^pay:back:plans$"))
 
     # Payment proof conversation
