@@ -466,6 +466,14 @@ def check_subscriptions() -> dict:
         now = datetime.now(timezone.utc)
         warned = expired = 0
 
+        # Pre-fetch free plan config for downgrade limit calculation
+        async with get_session() as session:
+            from bot.models import PlanConfig
+            free_cfg = (await session.execute(
+                select(PlanConfig).where(PlanConfig.plan == PlanType.FREE)
+            )).scalar_one_or_none()
+            free_cfg_max_accounts = free_cfg.max_accounts if free_cfg else 5
+
         # Stream results — avoids loading all paying users into memory at once
         async with get_session() as session:
             stream = await session.stream(
@@ -492,12 +500,11 @@ def check_subscriptions() -> dict:
                             parse_mode="HTML",
                         )
                         async with get_session() as s:
-                            from sqlalchemy import select as sel
+                            from sqlalchemy import update
                             from bot.models import User as U
-                            u = (await s.execute(
-                                sel(U).where(U.id == user.id)
-                            )).scalar_one()
-                            u.last_expiry_warning_at = now
+                            await s.execute(
+                                update(U).where(U.id == user.id).values(last_expiry_warning_at=now)
+                            )
                         warned += 1
 
             # Expired — apply 48h grace period first, then hard downgrade
@@ -531,20 +538,18 @@ def check_subscriptions() -> dict:
 
                 # Grace expired or no grace left — hard downgrade to free
                 async with get_session() as s:
-                    from sqlalchemy import select as sel
+                    from sqlalchemy import update, select as sel
                     from bot.models import User as U, Account
-                    u = (await s.execute(
-                        sel(U).where(U.id == user.id)
-                    )).scalar_one()
-                    u.plan = PlanType.FREE
-                    u.subscription_expires_at = None
+
+                    await s.execute(
+                        update(U).where(U.id == user.id).values(
+                            plan=PlanType.FREE,
+                            subscription_expires_at=None
+                        )
+                    )
 
                     # Disable accounts beyond free limit (5 + referral bonus)
-                    from bot.models import PlanConfig
-                    free_cfg = (await s.execute(
-                        sel(PlanConfig).where(PlanConfig.plan == PlanType.FREE)
-                    )).scalar_one_or_none()
-                    free_limit = (free_cfg.max_accounts if free_cfg else 5) + u.referral_bonus_accounts
+                    free_limit = free_cfg_max_accounts + user.referral_bonus_accounts
 
                     all_accounts = (await s.execute(
                         sel(Account)
