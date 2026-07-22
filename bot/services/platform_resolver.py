@@ -24,19 +24,24 @@ logger = logging.getLogger(__name__)
 _client: Optional[httpx.AsyncClient] = None
 
 
+def _create_client() -> httpx.AsyncClient:
+    """Create a new AsyncClient with predefined configuration."""
+    return httpx.AsyncClient(
+        timeout=15.0,
+        # SEC-6 fix: follow_redirects=False prevents SSRF via redirect.
+        # is_safe_url() only validates the initial URL; with follow_redirects=True
+        # a malicious server at https://evil.com/feed could 301 → http://redis:6379.
+        # Callers that need redirect support must validate the Location header
+        # with is_safe_url() before following manually.
+        follow_redirects=False,
+        headers={"User-Agent": "SocialtoFeed/3.2 (feed aggregator bot)"},
+    )
+
+
 def _get_client() -> httpx.AsyncClient:
     global _client
     if _client is None or _client.is_closed:
-        _client = httpx.AsyncClient(
-            timeout=15.0,
-            # SEC-6 fix: follow_redirects=False prevents SSRF via redirect.
-            # is_safe_url() only validates the initial URL; with follow_redirects=True
-            # a malicious server at https://evil.com/feed could 301 → http://redis:6379.
-            # Callers that need redirect support must validate the Location header
-            # with is_safe_url() before following manually.
-            follow_redirects=False,
-            headers={"User-Agent": "SocialtoFeed/3.2 (feed aggregator bot)"},
-        )
+        _client = _create_client()
     return _client
 
 
