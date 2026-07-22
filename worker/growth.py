@@ -24,6 +24,55 @@ logger = logging.getLogger(__name__)
 #  Re-engagement: No accounts after 3 days
 # ─────────────────────────────────────────────
 
+async def _get_inactive_users():
+    from bot.database import get_session
+    from bot.models import User, Account
+    from sqlalchemy import select
+
+    three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
+    four_days_ago = datetime.now(timezone.utc) - timedelta(days=4)
+
+    async with get_session() as session:
+        # Users registered 3-4 days ago with zero accounts
+        users_no_accounts = (await session.execute(
+            select(User)
+            .where(
+                User.created_at.between(four_days_ago, three_days_ago),
+                User.is_banned == False,
+                ~User.id.in_(
+                    select(Account.user_id).distinct()
+                ),
+            )
+        )).scalars().all()
+    return users_no_accounts
+
+
+async def _process_inactive_users(bot, users):
+    from bot.utils.translator import t
+    from bot.utils.fixes import safe_send_fixed
+
+    sent = 0
+    for user in users:
+        lang = user.language
+        msg = t(
+            "growth.reengage_no_accounts",
+            lang,
+            name=user.first_name or "there",
+            default=(
+                f"👋 Hey {user.first_name or 'there'}! Don't forget to add your first account.\n\n"
+                f"Start free with 5 accounts — just paste any link "
+                f"and the bot detects the platform automatically 🎯\n\n"
+                f"👉 /start"
+            ),
+        )
+
+        result = await safe_send_fixed(bot, user.telegram_id, msg)
+        if result:
+            sent += 1
+        await asyncio.sleep(0.5)
+    return sent
+
+
 @celery_app.task(name="worker.growth.reengage_inactive")
 def reengage_inactive_users() -> dict:
     """
@@ -32,51 +81,14 @@ def reengage_inactive_users() -> dict:
     Runs daily at 11 AM via beat.
     """
     async def _run_task():
-        from bot.database import init_db, get_session
-        from bot.models import User, Account
-        from sqlalchemy import select, func
-        from bot.utils.fixes import safe_send_fixed
+        from bot.database import init_db
         from bot.utils.telegram_utils import get_bot
-        from bot.utils.translator import t
 
         await init_db()
         bot = get_bot()
 
-        three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
-        four_days_ago = datetime.now(timezone.utc) - timedelta(days=4)
-
-        async with get_session() as session:
-            # Users registered 3-4 days ago with zero accounts
-            users_no_accounts = (await session.execute(
-                select(User)
-                .where(
-                    User.created_at.between(four_days_ago, three_days_ago),
-                    User.is_banned == False,
-                    ~User.id.in_(
-                        select(Account.user_id).distinct()
-                    ),
-                )
-            )).scalars().all()
-
-        sent = 0
-        for user in users_no_accounts:
-            lang = user.language
-            msg = t(
-                "growth.reengage_no_accounts",
-                lang,
-                name=user.first_name or "there",
-                default=(
-                    f"👋 Hey {user.first_name or 'there'}! Don't forget to add your first account.\n\n"
-                    f"Start free with 5 accounts — just paste any link "
-                    f"and the bot detects the platform automatically 🎯\n\n"
-                    f"👉 /start"
-                ),
-            )
-
-            result = await safe_send_fixed(bot, user.telegram_id, msg)
-            if result:
-                sent += 1
-            await asyncio.sleep(0.5)
+        users_no_accounts = await _get_inactive_users()
+        sent = await _process_inactive_users(bot, users_no_accounts)
 
         logger.info(f"Re-engagement: sent {sent} nudges")
         return {"sent": sent}
