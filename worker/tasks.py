@@ -515,17 +515,7 @@ def check_subscriptions() -> dict:
                 # INC-2 fix: apply_grace_period() was defined but never called.
                 # Give the user a 48-hour window before wiping their plan.
                 # If they are already in grace, or grace has expired, downgrade.
-                grace_active = (
-                    user.grace_until
-                    and user.grace_until > now
-                    and user.original_plan_before_grace
-                )
-                grace_expired = (
-                    user.grace_until
-                    and user.grace_until <= now
-                )
-
-                if not user.grace_until and not grace_expired:
+                if not user.grace_until:
                     # First time we detect expiry — start grace period
                     from bot.services.plan_service import apply_grace_period
                     await apply_grace_period(user.id)
@@ -535,6 +525,11 @@ def check_subscriptions() -> dict:
                         parse_mode="HTML",
                     )
                     continue  # check again next cycle
+
+                grace_active = (
+                    user.grace_until > now
+                    and user.original_plan_before_grace
+                )
 
                 if grace_active:
                     continue  # still within 48h grace — do nothing
