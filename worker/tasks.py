@@ -142,6 +142,11 @@ def _run(coro):
     try:
         return loop.run_until_complete(coro)
     finally:
+        from bot.database import close_db
+        try:
+            loop.run_until_complete(close_db())
+        except Exception as e:
+            logger.error(f"Error closing db connection in celery task: {e}")
         loop.close()
 
 
