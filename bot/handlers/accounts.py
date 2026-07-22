@@ -82,25 +82,43 @@ def _allowed(plan:str)->set:
     if plan=="pro":     return FREE_PLATFORMS|PRO_PLATFORMS
     return FREE_PLATFORMS
 
-# ── 🔄 HYBRID UPDATES ─────────────────────────────────────────────────────────
-async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
-    lang=user.language; f=lang=="fa"; now=datetime.now(timezone.utc)
-    since=user.last_feed_viewed_at
+async def _fetch_recent_posts(user_id:int, since:Optional[datetime], now:datetime) -> list:
     async with get_session() as s:
         from sqlalchemy import select
         q=(select(SentPost, Account.platform).join(Account, SentPost.account_id==Account.id)
-           .where(Account.user_id==user.id, Account.is_active==True)
+           .where(Account.user_id==user_id, Account.is_active==True)
            .order_by(SentPost.published_at.desc()))
         if since: q=q.where(SentPost.published_at>since)
         else:
             from datetime import timedelta
             q=q.where(SentPost.published_at>now-timedelta(hours=24))
         rows=(await s.execute(q.limit(20))).all()
-        posts=[(row[0], row[1]) for row in rows]  # (SentPost, Platform)
+        return [(row[0], row[1]) for row in rows]
+
+async def _update_last_feed_viewed(user_id:int, now:datetime) -> None:
     async with get_session() as s:
         from sqlalchemy import select
-        db_user=(await s.execute(select(User).where(User.id==user.id))).scalar_one_or_none()
-        if db_user: db_user.last_feed_viewed_at=now
+        db_user=(await s.execute(select(User).where(User.id==user_id))).scalar_one_or_none()
+        if db_user:
+            db_user.last_feed_viewed_at=now
+            await s.commit()
+
+async def _trigger_background_fetches(user_id:int) -> None:
+    try:
+        async with get_session() as s:
+            from sqlalchemy import select
+            ids=(await s.execute(select(Account.id).where(Account.user_id==user_id,Account.is_active==True))).scalars().all()
+        from worker.tasks import fetch_account_task
+        for acc_id in ids: fetch_account_task.delay(acc_id)
+    except Exception as e: logger.warning(f"[updates] bg fetch failed: {e}")
+
+# ── 🔄 HYBRID UPDATES ─────────────────────────────────────────────────────────
+async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
+    lang=user.language; f=lang=="fa"; now=datetime.now(timezone.utc)
+
+    posts = await _fetch_recent_posts(user.id, user.last_feed_viewed_at, now)
+    await _update_last_feed_viewed(user.id, now)
+
     if not posts:
         await safe_send_message(update.effective_user.id,"🔄 "+("پست جدیدی یافت نشد." if f else "No new posts found."))
     else:
@@ -113,13 +131,8 @@ async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:Us
                 platform=platform.value if platform else "",
                 url=post.url or "",url_key=str(post.id),lang=lang,plan=plan)
             await safe_send_message(update.effective_user.id,text,parse_mode=ParseMode.HTML,reply_markup=kb)
-    try:
-        async with get_session() as s:
-            from sqlalchemy import select
-            ids=(await s.execute(select(Account.id).where(Account.user_id==user.id,Account.is_active==True))).scalars().all()
-        from worker.tasks import fetch_account_task
-        for acc_id in ids: fetch_account_task.delay(acc_id)
-    except Exception as e: logger.warning(f"[updates] bg fetch failed: {e}")
+
+    await _trigger_background_fetches(user.id)
 
 # ── ACCOUNTS SUBMENU ──────────────────────────────────────────────────────────
 async def show_accounts_submenu(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
