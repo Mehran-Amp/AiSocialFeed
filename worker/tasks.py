@@ -240,10 +240,9 @@ def schedule_pending_fetches() -> dict:
 
         # PERF-3 fix: cursor-based pagination so all accounts are covered over
         # successive beat cycles, even when active accounts exceed 5,000.
-        import redis as redis_lib
-        from config import config as cfg
-        _r = redis_lib.from_url(cfg.redis.url, decode_responses=True)
-        last_id = int(_r.get("scheduler:last_account_id") or 0)
+        from bot.cache import get_redis
+        _r = await get_redis()
+        last_id = int(await _r.get("scheduler:last_account_id") or 0)
 
         async with get_session() as session:
             due_accounts = (await session.execute(
@@ -255,14 +254,27 @@ def schedule_pending_fetches() -> dict:
                 .order_by(Account.id)
                 .limit(5000)
             )).scalars().all()
+            due_accounts = list(due_accounts)
+
+            if len(due_accounts) < 5000 and last_id > 0:
+                remaining = 5000 - len(due_accounts)
+                more_accounts = (await session.execute(
+                    select(Account.id).where(
+                        Account.is_active == True,
+                        Account.next_fetch_at <= now,
+                        Account.id <= last_id,
+                    )
+                    .order_by(Account.id)
+                    .limit(remaining)
+                )).scalars().all()
+                due_accounts.extend(more_accounts)
 
         # If we hit the limit there may be more — advance cursor.
         # If fewer than 5000 returned, we've lapped the table — reset cursor.
         if len(due_accounts) == 5000:
-            _r.set("scheduler:last_account_id", due_accounts[-1], ex=3600)
+            await _r.setex("scheduler:last_account_id", 3600, due_accounts[-1])
         else:
-            _r.delete("scheduler:last_account_id")  # reset for next cycle
-        # No _r.close() needed — ConnectionPool reclaims the connection automatically
+            await _r.delete("scheduler:last_account_id")  # reset for next cycle
 
         total = len(due_accounts)
         if total == 0:
