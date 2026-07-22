@@ -13,6 +13,7 @@ import logging
 import os
 import subprocess
 import tempfile
+import pathlib
 from datetime import datetime, timezone
 
 from worker.tasks import celery_app, _run
@@ -103,14 +104,13 @@ def backup_to_telegram() -> dict:
                 f"🗃 Database: {db_name}"
             )
 
-            with open(tmp_path, "rb") as f:
-                await bot.send_document(
-                    chat_id=int(backup_channel),
-                    document=f,
-                    filename=filename,
-                    caption=caption,
-                    parse_mode="HTML",
-                )
+            await bot.send_document(
+                chat_id=int(backup_channel),
+                document=pathlib.Path(tmp_path),
+                filename=filename,
+                caption=caption,
+                parse_mode="HTML",
+            )
 
             logger.info(f"Backup sent to channel: {filename} ({file_size_mb} MB)")
             return {"status": "ok", "filename": filename, "size_mb": file_size_mb}
