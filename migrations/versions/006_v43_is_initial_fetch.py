@@ -1,0 +1,19 @@
+"""v4.3.0: add is_initial_fetch to accounts
+
+Revision ID: 006
+Revises: 005
+Create Date: 2026-07-22
+"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = "006"
+down_revision = "005"
+branch_labels = None
+depends_on = None
+
+def upgrade():
+    op.add_column("accounts", sa.Column("is_initial_fetch", sa.Boolean(), nullable=False, server_default=sa.text("1")))
+
+def downgrade():
+    op.drop_column("accounts", "is_initial_fetch")
