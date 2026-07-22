@@ -538,10 +538,14 @@ async def cb_broadcast_send(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         nonlocal sent, failed
         async with semaphore:
             try:
-                await safe_send_message(tg_id, text, parse_mode="HTML")
-                sent += 1
+                msg = await safe_send_message(tg_id, text, parse_mode="HTML")
+                if msg:
+                    sent += 1
+                else:
+                    failed += 1
             except Exception:
                 failed += 1
+            await asyncio.sleep(1)
 
     async with get_session() as session:
         q = select(User.telegram_id).where(User.is_banned == False)
