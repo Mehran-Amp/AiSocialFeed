@@ -405,7 +405,7 @@ class TelegramChannelFetcher(BasePlatformFetcher):
             r'<div class="tgme_widget_message_wrap[^"]*"[^>]*>(.*?)</div>\s*</div>\s*</div>',
             html, re.DOTALL,
         )
-        for block in blocks[:10]:
+        for block in reversed(blocks[-10:]):
             id_match = re.search(r'data-post="[^/]+/(\d+)"', block)
             msg_id = id_match.group(1) if id_match else ""
             post_url = f"https://t.me/{username}/{msg_id}" if msg_id else ""
