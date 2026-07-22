@@ -684,6 +684,94 @@ def check_platform_health() -> dict:
 #  Task: Monitor Payment (CoinEx polling)
 # ─────────────────────────────────────────────
 
+def _check_tx_preconditions(tx) -> dict | None:
+    from bot.models import TransactionStatus
+    if not tx:
+        return {"skipped": True, "reason": "tx not found"}
+    if tx.status == TransactionStatus.APPROVED:
+        return {"skipped": True, "reason": "already activated"}
+    if tx.status != TransactionStatus.PENDING:
+        return {"skipped": True, "reason": f"status={tx.status}"}
+    return None
+
+
+async def _handle_tx_expiration(session, tx) -> dict | None:
+    from datetime import datetime, timezone
+    from bot.models import TransactionStatus
+    now = datetime.now(timezone.utc)
+    if tx.address_expires_at and tx.address_expires_at < now:
+        tx.status = TransactionStatus.REJECTED
+        await session.commit()
+        return {"expired": True}
+    return None
+
+
+async def _process_successful_deposit(session, tx, tx_id: int, deposit_result: dict) -> dict | None:
+    from sqlalchemy import select
+    from bot.models import User
+    from bot.utils.fixes import activate_subscription_safe
+
+    user = (await session.execute(
+        select(User).where(User.id == tx.user_id)
+    )).scalar_one_or_none()
+
+    if user:
+        activated = await activate_subscription_safe(
+            tx_id=tx_id,
+            deposit_result=deposit_result,
+            reviewed_by="auto:coinex",
+        )
+        return {"activated": activated, "txid": deposit_result.get("txid")}
+    return None
+
+
+def _alert_payment_crash(tx_id: int, exc: Exception):
+    import asyncio as _asyncio
+    from bot.utils.alerts import alert_payment
+    _asyncio.ensure_future(alert_payment(
+        "Payment Monitor Crashed",
+        f"monitor_payment_task failed for tx_id={tx_id}",
+        exception=str(exc),
+        tx_id=tx_id,
+        action="Check logs; payment may need manual review",
+    ))
+
+
+async def _monitor_payment_core(tx_id: int) -> dict:
+    from bot.database import init_db, get_session
+    from bot.models import Transaction
+    from bot.services.payment_service import check_deposit
+    from sqlalchemy import select
+
+    await init_db()
+    async with get_session() as session:
+        tx = (await session.execute(
+            select(Transaction).where(Transaction.id == tx_id)
+        )).scalar_one_or_none()
+
+        precondition_fail = _check_tx_preconditions(tx)
+        if precondition_fail:
+            return precondition_fail
+
+        expiration_fail = await _handle_tx_expiration(session, tx)
+        if expiration_fail:
+            return expiration_fail
+
+        result = await check_deposit(
+            tx.deposit_address,
+            tx.network,
+            float(tx.amount_usdt),
+            tx.address_generated_at or tx.created_at,
+        )
+
+        if result and result.get("confirmed") and result.get("enough"):
+            activation_result = await _process_successful_deposit(session, tx, tx_id, result)
+            if activation_result:
+                return activation_result
+
+    return {"pending": True}
+
+
 @celery_app.task(
     bind=True,
     name="worker.tasks.monitor_payment_task",
@@ -692,69 +780,11 @@ def check_platform_health() -> dict:
 )
 def monitor_payment_task(self, tx_id: int) -> dict:
     """Poll CoinEx every 90s for up to 6 hours until payment confirmed."""
-
-    async def _monitor():
-        from datetime import datetime, timezone
-        from bot.database import init_db, get_session
-        from bot.models import Transaction, TransactionStatus, User
-        from bot.services.payment_service import check_deposit
-        from sqlalchemy import select
-
-        await init_db()
-        async with get_session() as session:
-            tx = (await session.execute(
-                select(Transaction).where(Transaction.id == tx_id)
-            )).scalar_one_or_none()
-
-            if not tx:
-                return {"skipped": True, "reason": "tx not found"}
-            if tx.status == TransactionStatus.APPROVED:
-                return {"skipped": True, "reason": "already activated"}
-            if tx.status != TransactionStatus.PENDING:
-                return {"skipped": True, "reason": f"status={tx.status}"}
-
-            now = datetime.now(timezone.utc)
-            if tx.address_expires_at and tx.address_expires_at < now:
-                tx.status = TransactionStatus.REJECTED
-                await session.commit()
-                return {"expired": True}
-
-            result = await check_deposit(
-                tx.deposit_address,
-                tx.network,
-                float(tx.amount_usdt),
-                tx.address_generated_at or tx.created_at,
-            )
-
-            if result and result.get("confirmed") and result.get("enough"):
-                user = (await session.execute(
-                    select(User).where(User.id == tx.user_id)
-                )).scalar_one_or_none()
-
-                if user:
-                    from bot.utils.fixes import activate_subscription_safe
-                    activated = await activate_subscription_safe(
-                        tx_id=tx_id,
-                        deposit_result=result,
-                        reviewed_by="auto:coinex",
-                    )
-                    return {"activated": activated, "txid": result.get("txid")}
-
-        return {"pending": True}
-
     try:
-        return _run(_monitor())
+        return _run(_monitor_payment_core(tx_id))
     except Exception as exc:
         # v3.2: alert developer immediately on payment task crash
-        import asyncio as _asyncio
-        from bot.utils.alerts import alert_payment
-        _asyncio.ensure_future(alert_payment(
-            "Payment Monitor Crashed",
-            f"monitor_payment_task failed for tx_id={tx_id}",
-            exception=str(exc),
-            tx_id=tx_id,
-            action="Check logs; payment may need manual review",
-        ))
+        _alert_payment_crash(tx_id, exc)
         raise self.retry(exc=exc)
 
 
