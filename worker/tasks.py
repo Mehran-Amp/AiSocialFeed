@@ -843,13 +843,14 @@ def retry_pending_payments(self):
     """Recheck PENDING crypto transactions that are >10 min old."""
 
     async def _run_retry():
-        from bot.database import get_session
+        from bot.database import init_db, get_session
         from bot.models import Transaction, TransactionStatus, TransactionMethod
         from bot.services.payment_service import check_deposit
         from bot.utils.fixes import activate_subscription_safe
         from sqlalchemy import select
         from datetime import timedelta
 
+        await init_db()
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
 
         async with get_session() as session:
@@ -898,8 +899,11 @@ def retry_pending_payments(self):
 def check_anomalies_task():
     """Check for system anomalies and push alerts to admin via Telegram."""
     async def _run_check():
+        from bot.database import init_db
         from bot.handlers.admin_tg import check_anomalies_and_notify
         from telegram import Bot
+
+        await init_db()
         bot = Bot(token=config.telegram.token)
         await check_anomalies_and_notify(bot)
 
