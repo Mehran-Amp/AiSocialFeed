@@ -24,6 +24,69 @@ logger = logging.getLogger(__name__)
 #  Daily Backup to Telegram Channel
 # ─────────────────────────────────────────────
 
+def _parse_db_url(db_url: str) -> tuple[str, str, str, str, str] | None:
+    import re
+    m = re.match(
+        r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)",
+        db_url.replace("+asyncpg", ""),
+    )
+    if not m:
+        return None
+    db_user, db_pass, db_host, db_port, db_name = m.groups()
+    return db_user, db_pass, db_host, db_port or "5432", db_name
+
+
+def _create_database_dump(db_host: str, db_port: str, db_user: str, db_name: str, db_pass: str, tmp_path: str) -> bool:
+    env = os.environ.copy()
+    env["PGPASSWORD"] = db_pass
+
+    dump_cmd = [
+        "pg_dump",
+        "-h", db_host,
+        "-p", db_port,
+        "-U", db_user,
+        "-d", db_name,
+        "--no-password",
+    ]
+
+    result = subprocess.run(
+        dump_cmd,
+        env=env,
+        capture_output=True,
+        timeout=120,
+    )
+
+    if result.returncode != 0:
+        logger.error(f"pg_dump stderr: {result.stderr.decode()[:500]}")
+        return False
+
+    with gzip.open(tmp_path, "wb") as gz:
+        gz.write(result.stdout)
+
+    return True
+
+
+async def _send_backup_to_telegram(backup_channel: str, timestamp: str, db_name: str, file_size_mb: float, filename: str, tmp_path: str) -> None:
+    from bot.utils.telegram_utils import get_bot
+    bot = get_bot()
+
+    caption = (
+        f"🗄 <b>SocialtoFeed Backup</b>\n\n"
+        f"📅 {timestamp}\n"
+        f"💾 {file_size_mb} MB\n"
+        f"🗃 Database: {db_name}"
+    )
+
+    with open(tmp_path, "rb") as f:
+        await bot.send_document(
+            chat_id=int(backup_channel),
+            document=f,
+            filename=filename,
+            caption=caption,
+            parse_mode="HTML",
+        )
+
+
 @celery_app.task(name="worker.infra.backup_to_telegram")
 def backup_to_telegram() -> dict:
     """
@@ -41,19 +104,11 @@ def backup_to_telegram() -> dict:
             logger.warning("BACKUP_CHANNEL_ID not set — skipping Telegram backup")
             return {"status": "skipped", "reason": "no channel configured"}
 
-        db_url = config.db.url
-        # Parse DB connection params from URL
-        # postgresql://user:pass@host:port/dbname
-        import re
-        m = re.match(
-            r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)",
-            db_url.replace("+asyncpg", ""),
-        )
-        if not m:
+        parsed_url = _parse_db_url(config.db.url)
+        if not parsed_url:
             return {"status": "error", "reason": "Could not parse DATABASE_URL"}
 
-        db_user, db_pass, db_host, db_port, db_name = m.groups()
-        db_port = db_port or "5432"
+        db_user, db_pass, db_host, db_port, db_name = parsed_url
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         filename = f"stf_backup_{timestamp}.sql.gz"
@@ -62,55 +117,12 @@ def backup_to_telegram() -> dict:
             tmp_path = tmp.name
 
         try:
-            # Run pg_dump
-            env = os.environ.copy()
-            env["PGPASSWORD"] = db_pass
-
-            dump_cmd = [
-                "pg_dump",
-                "-h", db_host,
-                "-p", db_port,
-                "-U", db_user,
-                "-d", db_name,
-                "--no-password",
-            ]
-
-            result = subprocess.run(
-                dump_cmd,
-                env=env,
-                capture_output=True,
-                timeout=120,
-            )
-
-            if result.returncode != 0:
-                logger.error(f"pg_dump stderr: {result.stderr.decode()[:500]}")
+            if not _create_database_dump(db_host, db_port, db_user, db_name, db_pass, tmp_path):
                 return {"status": "error", "reason": "pg_dump failed — check server logs"}
-
-            # Compress
-            with gzip.open(tmp_path, "wb") as gz:
-                gz.write(result.stdout)
 
             file_size_mb = round(os.path.getsize(tmp_path) / 1024 / 1024, 2)
 
-            # Send to Telegram
-            from bot.utils.telegram_utils import get_bot
-            bot = get_bot()
-
-            caption = (
-                f"🗄 <b>SocialtoFeed Backup</b>\n\n"
-                f"📅 {timestamp}\n"
-                f"💾 {file_size_mb} MB\n"
-                f"🗃 Database: {db_name}"
-            )
-
-            with open(tmp_path, "rb") as f:
-                await bot.send_document(
-                    chat_id=int(backup_channel),
-                    document=f,
-                    filename=filename,
-                    caption=caption,
-                    parse_mode="HTML",
-                )
+            await _send_backup_to_telegram(backup_channel, timestamp, db_name, file_size_mb, filename, tmp_path)
 
             logger.info(f"Backup sent to channel: {filename} ({file_size_mb} MB)")
             return {"status": "ok", "filename": filename, "size_mb": file_size_mb}
