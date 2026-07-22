@@ -15,7 +15,7 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from config import config
+from config.settings import config
 from bot.models import LogLevel, LogModule, Platform, SystemLog
 
 logger = logging.getLogger(__name__)

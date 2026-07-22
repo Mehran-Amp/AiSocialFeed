@@ -29,7 +29,7 @@ import traceback
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 

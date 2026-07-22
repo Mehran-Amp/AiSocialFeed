@@ -461,7 +461,7 @@ class BasePlatformFetcher(ABC):
 
         # Footer (every N posts) — counter persisted in Redis so it survives restarts
         if user.footer_enabled:
-            from config import config as cfg
+            from config.settings import config as cfg
             try:
                 r = await _get_footer_redis()
                 counter_key = f"footer_counter:{user.id}"
@@ -507,7 +507,7 @@ class BasePlatformFetcher(ABC):
             ))
 
         # Alert admin if too many consecutive errors
-        from config import config
+        from config.settings import config
         if acc and acc.consecutive_errors >= config.platform.max_consecutive_errors:
             from bot.utils.logger import STFLogger
             from bot.models import LogModule
@@ -661,7 +661,7 @@ class BasePlatformFetcher(ABC):
             )).scalar_one_or_none()
             if db_user:
                 db_user.channel_forward_errors += 1
-                from config import config
+                from config.settings import config
                 if db_user.channel_forward_errors >= config.app.channel_forward_max_errors:
                     db_user.channel_forward_id = None
                     db_user.channel_forward_errors = 0

@@ -34,7 +34,7 @@ def backup_to_telegram() -> dict:
     """
 
     async def _backup():
-        from config import config
+        from config.settings import config
 
         backup_channel = os.getenv("BACKUP_CHANNEL_ID")
         if not backup_channel:
@@ -212,7 +212,7 @@ def check_webhook_health() -> dict:
 async def _check_webhook() -> dict:
     from datetime import datetime, timezone
     from bot.cache import get_redis
-    from config import config
+    from config.settings import config
 
     r = await get_redis()
     now = datetime.now(timezone.utc)

@@ -24,7 +24,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +293,7 @@ async def handle_referral_safe(user_id: int, referral_code: str) -> bool:
         if not referrer:
             return False
 
-        from config import config as cfg
+        from config.settings import config as cfg
         max_bonus = 10  # from SystemConfig ideally
 
         if referrer.referral_bonus_accounts >= max_bonus:

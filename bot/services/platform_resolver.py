@@ -17,7 +17,7 @@ import feedparser
 import httpx
 
 from bot.models import Platform
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 

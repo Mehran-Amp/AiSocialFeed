@@ -10,7 +10,7 @@ import sys
 from telegram import Update
 from telegram.ext import Application, ApplicationBuilder
 
-from config import config
+from config.settings import config
 from bot.database import init_db, close_db
 from bot.utils.logger import setup_logging, STFLogger
 from bot.utils.telegram_utils import set_bot

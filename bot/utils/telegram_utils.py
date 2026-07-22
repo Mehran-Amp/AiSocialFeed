@@ -13,7 +13,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
-from config import config
+from config.settings import config
 
 if TYPE_CHECKING:
     from telegram.ext import Application

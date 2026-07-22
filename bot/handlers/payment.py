@@ -356,7 +356,7 @@ async def receive_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 def from_config_admin_id() -> int:
-    from config import config
+    from config.settings import config
     return config.telegram.admin_id
 
 

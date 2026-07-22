@@ -20,7 +20,7 @@ import httpx
 
 from bot.models import Account, Platform
 from bot.platforms.base import BasePlatformFetcher, FetchResult, FetchedPost
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +194,7 @@ def make_instant_view_button(url: str, lang: str = "en"):
 
     Returns None if rhash is not configured — callers must handle None.
     """
-    from config import config as _cfg
+    from config.settings import config as _cfg
     rhash = _cfg.telegram.iv_rhash
     if not rhash:
         # IV not configured — button silently disabled
