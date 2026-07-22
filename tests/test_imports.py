@@ -75,3 +75,4 @@ def test_ssrf_validator():
     assert not is_safe_url("http://10.0.0.1/rss")
     assert is_safe_url("https://example.com/feed.rss")
     assert is_safe_url("https://news.ycombinator.com/rss")
+    assert not is_safe_url("http://[::1")  # Malformed URL
