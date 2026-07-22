@@ -477,6 +477,7 @@ def check_subscriptions() -> dict:
             )
             paying_users = [u async for u in stream.scalars()]
 
+        users_to_update = []
         for user in paying_users:
             days_left = int((user.subscription_expires_at - now).total_seconds() / 86400)
 
@@ -491,13 +492,7 @@ def check_subscriptions() -> dict:
                               user.language, days=days_left),
                             parse_mode="HTML",
                         )
-                        async with get_session() as s:
-                            from sqlalchemy import select as sel
-                            from bot.models import User as U
-                            u = (await s.execute(
-                                sel(U).where(U.id == user.id)
-                            )).scalar_one()
-                            u.last_expiry_warning_at = now
+                        users_to_update.append(user.id)
                         warned += 1
 
             # Expired — apply 48h grace period first, then hard downgrade
@@ -561,6 +556,16 @@ def check_subscriptions() -> dict:
                     parse_mode="HTML",
                 )
                 expired += 1
+
+        if users_to_update:
+            async with get_session() as s:
+                from sqlalchemy import update
+                from bot.models import User as U
+                await s.execute(
+                    update(U)
+                    .where(U.id.in_(users_to_update))
+                    .values(last_expiry_warning_at=now)
+                )
 
         return {"warned": warned, "expired": expired}
 
