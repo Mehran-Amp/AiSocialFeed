@@ -298,6 +298,7 @@ def send_share_prompts() -> dict:
         await init_db()
         now = datetime.now(timezone.utc)
         sent = 0
+        sent_user_ids = []
         async with get_session() as session:
             # Users in first 3 weeks who haven't maxed prompts
             users = (await session.execute(
@@ -307,6 +308,7 @@ def send_share_prompts() -> dict:
                     User.is_banned == False,
                 )
             )).scalars().all()
+
         for user in users:
             # Check 7-day interval
             if user.share_prompt_last_at:
@@ -318,7 +320,7 @@ def send_share_prompts() -> dict:
             from bot.handlers.share_bot import _MSGS
             from bot.utils.keyboards import share_bot_keyboard
             lang = user.language
-            ref = f"https://t.me/{config.app.bot_username}?start=ref_{user.telegram_id}"
+            ref = f"https://t.me/{config.telegram.username}?start=ref_{user.telegram_id}"
             msg = _MSGS.get(lang, _MSGS["en"])
             try:
                 await safe_send_message(
@@ -326,18 +328,23 @@ def send_share_prompts() -> dict:
                     parse_mode="HTML",
                     reply_markup=share_bot_keyboard(lang, ref),
                 )
-                # Update counter
-                async with get_session() as session:
-                    from sqlalchemy import select
-                    db_u = (await session.execute(
-                        select(User).where(User.id == user.id)
-                    )).scalar_one_or_none()
-                    if db_u:
-                        db_u.share_prompt_count = (db_u.share_prompt_count or 0) + 1
-                        db_u.share_prompt_last_at = now
+                sent_user_ids.append(user.id)
                 sent += 1
             except Exception as e:
                 logger.debug(f"Share prompt failed user {user.telegram_id}: {e}")
+
+        if sent_user_ids:
+            from sqlalchemy import update, func
+            async with get_session() as session:
+                await session.execute(
+                    update(User)
+                    .where(User.id.in_(sent_user_ids))
+                    .values(
+                        share_prompt_count=func.coalesce(User.share_prompt_count, 0) + 1,
+                        share_prompt_last_at=now
+                    )
+                )
+
         return {"sent": sent}
 
     return _run(_send())
