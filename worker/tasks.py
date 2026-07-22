@@ -433,10 +433,13 @@ def send_due_digests() -> dict:
 
                 # Schedule next digest
                 async with get_session() as s2:
-                    from sqlalchemy import select as sel
+                    from sqlalchemy import update as sql_update
                     from bot.models import User as U
-                    u = (await s2.execute(sel(U).where(U.id == user.id))).scalar_one()
-                    u.digest_next_send = now + timedelta(hours=u.digest_interval_hours or 24)
+                    await s2.execute(
+                        sql_update(U)
+                        .where(U.id == user.id)
+                        .values(digest_next_send=now + timedelta(hours=user.digest_interval_hours or 24))
+                    )
 
             except Exception as e:
                 logger.error(f"Digest failed for user {user.id}: {e}")
