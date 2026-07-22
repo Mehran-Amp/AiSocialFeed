@@ -13,20 +13,27 @@ from celery import Celery
 from celery.signals import worker_process_init
 
 
+def _init_database():
+    """Initialize the database connection."""
+    from bot.database import init_db
+    asyncio.run(init_db())
+
+def _register_worker_heartbeat():
+    """Register the worker heartbeat in Redis."""
+    import redis as redis_lib
+    from config import config as cfg
+    r = redis_lib.from_url(cfg.redis.url, decode_responses=True)
+    import socket
+    hb_key = f"celery:worker:heartbeat:{socket.gethostname()}"
+    r.set(hb_key, "1", ex=cfg.admin.worker_heartbeat_ttl)
+    r.close()
+
 @worker_process_init.connect
 def _setup_db_on_worker_start(sender=None, **kwargs):
     """Run init_db() once per worker process, not per task."""
-    from bot.database import init_db
     try:
-        asyncio.run(init_db())
-        # v3.2: write heartbeat key so health_check and digest can confirm worker is alive
-        import redis as redis_lib
-        from config import config as cfg
-        r = redis_lib.from_url(cfg.redis.url, decode_responses=True)
-        import socket
-        hb_key = f"celery:worker:heartbeat:{socket.gethostname()}"
-        r.set(hb_key, "1", ex=cfg.admin.worker_heartbeat_ttl)
-        r.close()
+        _init_database()
+        _register_worker_heartbeat()
     except Exception as e:
         logger.warning(f"init_db on worker start failed: {e}")
 
