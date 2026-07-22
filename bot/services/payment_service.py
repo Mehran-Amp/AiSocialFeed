@@ -159,3 +159,89 @@ async def start_payment_monitor(tx_id: int) -> None:
         logger.info(f"Payment monitor scheduled for tx_id={tx_id}")
     except Exception as e:
         logger.error(f"start_payment_monitor error: {e}")
+
+async def activate_subscription_safe(
+    tx_id: int,
+    deposit_result: dict,
+    reviewed_by: str = "admin",
+) -> bool:
+    """
+    Async SQLAlchemy subscription activation.
+    Atomic check+update prevents double-approve.
+    Returns True if activated, False if already processed.
+
+    Args:
+        tx_id:          Transaction.id (int)
+        deposit_result: dict from check_deposit — must have "txid" key
+        reviewed_by:    label stored in Transaction.reviewed_by
+    """
+    from bot.database import get_session
+    from bot.models import Transaction, TransactionStatus, User
+    from sqlalchemy import update as sql_update, select
+
+    now = datetime.now(timezone.utc)
+
+    async with get_session() as session:
+        # ── 1. Atomic guard: only update if still PENDING ─────────────────
+        result = await session.execute(
+            sql_update(Transaction)
+            .where(
+                Transaction.id == tx_id,
+                Transaction.status == TransactionStatus.PENDING,
+            )
+            .values(
+                status=TransactionStatus.APPROVED,
+                reviewed_at=now,
+                reviewed_by=reviewed_by,
+                txid=deposit_result.get("txid"),
+            )
+            .returning(Transaction.id, Transaction.plan, Transaction.period, Transaction.user_id)
+        )
+        row = result.fetchone()
+
+        if row is None:
+            logger.warning(f"[activate_subscription_safe] tx={tx_id} already processed — skipping")
+            return False
+
+        _, plan_val, period_val, user_id = row
+
+        # ── 2. Reload user & compute expiry ───────────────────────────────
+        user = (await session.execute(
+            select(User).where(User.id == user_id)
+        )).scalar_one_or_none()
+
+        if user is None:
+            logger.error(f"[activate_subscription_safe] User not found for tx={tx_id}")
+            return False
+
+        duration_days = {
+            "monthly":  30,
+            "biannual": 183,
+            "yearly":   365,
+        }.get(period_val.value if hasattr(period_val, "value") else str(period_val), 30)
+
+        if user.subscription_expires_at and user.subscription_expires_at > now:
+            new_expiry = user.subscription_expires_at + timedelta(days=duration_days)
+        else:
+            new_expiry = now + timedelta(days=duration_days)
+
+        # ── 3. Update user plan ───────────────────────────────────────────
+        user.plan = plan_val
+        user.subscription_expires_at = new_expiry
+        user.subscription_pause_used = False
+        await session.flush()
+
+        # ── 4. Notify user (telegram_id loaded inside session) ────────────
+        telegram_id = user.telegram_id
+        language    = user.language
+        plan_name   = plan_val.value if hasattr(plan_val, "value") else str(plan_val)
+
+    # Outside session — safe to use captured scalars
+    try:
+        from admin.services import _notify_user_approved_async
+        await _notify_user_approved_async(telegram_id, plan_name, new_expiry, language)
+    except Exception as notify_err:
+        logger.warning(f"[activate_subscription_safe] Notification failed: {notify_err}")
+
+    logger.info(f"[activate_subscription_safe] Activated: user={telegram_id} plan={plan_name} expires={new_expiry}")
+    return True

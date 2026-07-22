@@ -732,7 +732,7 @@ def monitor_payment_task(self, tx_id: int) -> dict:
                 )).scalar_one_or_none()
 
                 if user:
-                    from bot.utils.fixes import activate_subscription_safe
+                    from bot.services.payment_service import activate_subscription_safe
                     activated = await activate_subscription_safe(
                         tx_id=tx_id,
                         deposit_result=result,
@@ -846,7 +846,7 @@ def retry_pending_payments(self):
         from bot.database import get_session
         from bot.models import Transaction, TransactionStatus, TransactionMethod
         from bot.services.payment_service import check_deposit
-        from bot.utils.fixes import activate_subscription_safe
+        from bot.services.payment_service import activate_subscription_safe
         from sqlalchemy import select
         from datetime import timedelta
 

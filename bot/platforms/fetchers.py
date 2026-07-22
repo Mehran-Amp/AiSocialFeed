@@ -104,7 +104,8 @@ async def _fetch_feed(url: str) -> Optional[feedparser.FeedParserDict]:
         raise httpx.HTTPStatusError(
             f"HTTP {resp.status_code}", request=resp.request, response=resp
         )
-    return feedparser.parse(resp.text)
+    import asyncio
+    return await asyncio.to_thread(feedparser.parse, resp.text)
 
 # ─── RSSHub fetch with cookie injection ──────
 
@@ -155,7 +156,8 @@ async def _fetch_rsshub(url: str) -> Optional[feedparser.FeedParserDict]:
             raise httpx.HTTPStatusError(
                 f"HTTP {resp.status_code}", request=resp.request, response=resp
             )
-        return feedparser.parse(resp.text)
+        import asyncio
+        return await asyncio.to_thread(feedparser.parse, resp.text)
     except Exception as e:
         logger.warning(f"RSSHub fetch failed {url}: {e}")
         return None

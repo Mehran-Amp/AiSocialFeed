@@ -23,7 +23,7 @@ from bot.services.video_extractor import (
     VideoInfo, VideoQuality,
     extract_video_info, format_duration, format_filesize,
 )
-from bot.utils.fixes import safe_send_fixed
+from bot.utils.telegram_utils import safe_send_message
 from bot.utils.telegram_utils import get_bot
 from bot.utils.translator import t
 from bot.utils.keyboards import home_button

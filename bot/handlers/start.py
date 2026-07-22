@@ -7,7 +7,6 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 from bot.database import get_session
 from bot.middlewares.auth import auth_middleware
 from bot.models import User, PlanType
-from bot.utils.fixes import cmd_cancel
 from bot.utils.keyboards import language_keyboard, main_menu
 from bot.utils.telegram_utils import safe_send_message
 from bot.utils.translator import t, SUPPORTED_LANGUAGES, get_language_name
@@ -328,6 +327,29 @@ async def _route_main_menu(update, context, user):
     await update.message.reply_text(
         "🏠", reply_markup=main_menu(user.language, plan_str, is_adm, count)
     )
+
+
+async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Universal cancel — exits any active conversation."""
+    from telegram.ext import ConversationHandler
+    from bot.utils.keyboards import main_menu
+
+    user = context.user_data.get("user")
+    lang = user.language if user else "en"
+
+    # Cleanup any pending context keys
+    for key in (
+        "adding_platform", "proof_type", "pending_plan",
+        "pending_period", "pending_amount", "ticket_subject",
+        "ticket_text", "ticket_attachments",
+    ):
+        context.user_data.pop(key, None)
+
+    await update.message.reply_text(
+        "✖️ Cancelled.",
+        reply_markup=main_menu(lang),
+    )
+    return ConversationHandler.END
 
 
 def register(app: Application) -> None:

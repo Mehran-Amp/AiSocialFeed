@@ -80,7 +80,7 @@ def _notify_user_approved(telegram_id: int, plan: str, expires: datetime, lang: 
 
 
 async def _notify_user_approved_async(telegram_id: int, plan: str, expires: datetime, lang: str) -> None:
-    """Async notification — awaited from bot/utils/fixes.py:activate_subscription_safe."""
+    """Async notification — awaited from bot/services/payment_service.py:activate_subscription_safe."""
     from bot.utils.telegram_utils import safe_send_message
     from bot.utils.translator import t
     msg = t(

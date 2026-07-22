@@ -35,7 +35,7 @@ def reengage_inactive_users() -> dict:
         from bot.database import init_db, get_session
         from bot.models import User, Account
         from sqlalchemy import select, func
-        from bot.utils.fixes import safe_send_fixed
+        from bot.utils.telegram_utils import safe_send_message
         from bot.utils.telegram_utils import get_bot
         from bot.utils.translator import t
 
@@ -73,7 +73,7 @@ def reengage_inactive_users() -> dict:
                 ),
             )
 
-            result = await safe_send_fixed(bot, user.telegram_id, msg)
+            result = await safe_send_message(user.telegram_id, msg)
             if result:
                 sent += 1
             await asyncio.sleep(0.5)
@@ -97,7 +97,7 @@ async def send_upsell_if_quota_full(user_id: int, telegram_id: int, lang: str) -
     Sends a compelling upsell message once per 7 days.
     Prices and account counts match aisocialfeed.com exactly.
     """
-    from bot.utils.fixes import safe_send_fixed
+    from bot.utils.telegram_utils import safe_send_message
     from bot.utils.telegram_utils import get_bot
 
     cache_key = f"upsell_sent:{user_id}"
@@ -129,7 +129,7 @@ async def send_upsell_if_quota_full(user_id: int, telegram_id: int, lang: str) -
             "👉 /subscription"
         )
 
-        await safe_send_fixed(bot, telegram_id, msg, parse_mode="HTML")
+        await safe_send_message(telegram_id, msg, parse_mode="HTML")
 
         # Do not send again for 7 days
         await r.setex(cache_key, 60 * 60 * 24 * 7, "1")
@@ -213,8 +213,7 @@ def broadcast_message_task(message: str, plan_filter: str = "all") -> dict:
     async def _broadcast():
         from bot.database import init_db, get_session
         from bot.models import User, PlanType
-        from bot.utils.fixes import safe_send_fixed
-        from bot.utils.telegram_utils import get_bot
+        from bot.utils.telegram_utils import get_bot, safe_send_message
         from sqlalchemy import select
 
         await init_db()
@@ -228,7 +227,7 @@ def broadcast_message_task(message: str, plan_filter: str = "all") -> dict:
 
         sent = failed = 0
         for tg_id in tg_ids:
-            result = await safe_send_fixed(bot, tg_id, message, parse_mode="HTML")
+            result = await safe_send_message(tg_id, message, parse_mode="HTML")
             if result:
                 sent += 1
             else:

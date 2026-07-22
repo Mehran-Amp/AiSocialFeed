@@ -213,7 +213,7 @@ async def cb_retry_tx(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     from bot.database import get_session
     from bot.models import Transaction, TransactionStatus
     from bot.services.payment_service import check_deposit
-    from bot.utils.fixes import activate_subscription_safe
+    from bot.services.payment_service import activate_subscription_safe
     from sqlalchemy import select
 
     async with get_session() as session:

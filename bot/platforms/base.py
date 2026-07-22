@@ -326,7 +326,7 @@ class BasePlatformFetcher(ABC):
         target_id = user.channel_forward_id or user.telegram_id
 
         from bot.utils.telegram_utils import get_bot
-        from bot.utils.fixes import safe_send_fixed
+        from bot.utils.telegram_utils import safe_send_message
         bot = get_bot()
 
         try:

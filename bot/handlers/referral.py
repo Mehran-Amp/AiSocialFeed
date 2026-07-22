@@ -153,35 +153,70 @@ def _extend(db, plan_str, days):
     db.subscription_expires_at = base + timedelta(days=days)
 
 
-async def handle_referral_safe(new_user_id, referrer_code):
-    try:
-        async with get_session() as s:
-            from sqlalchemy import select
-            from bot.models import User as U
-            referrer = (await s.execute(select(U).where(U.referral_code == referrer_code))).scalar_one_or_none()
-            new_user = (await s.execute(select(U).where(U.id == new_user_id))).scalar_one_or_none()
-            if not referrer or not new_user: return False
-            if referrer.id == new_user.id or new_user.referred_by_id: return False
-            new_user.referred_by_id = referrer.id
-            referrer.referral_count  = (referrer.referral_count  or 0) + 1
-            referrer.referral_points = (referrer.referral_points or 0) + POINTS_PER_REF
-            if (referrer.referral_bonus_accounts or 0) < MAX_BONUS_ACCTS:
-                referrer.referral_bonus_accounts = min((referrer.referral_bonus_accounts or 0) + 1, MAX_BONUS_ACCTS)
-            new_user.referral_points = (new_user.referral_points or 0) + NEW_USER_BONUS
-            # Milestone bonus every 5 referrals
-            milestones_earned = (referrer.referral_count or 0) // 5
-            if milestones_earned > (referrer.referral_milestones_claimed or 0):
-                referrer.referral_points += MILESTONE_POINTS
-                referrer.referral_milestones_claimed = milestones_earned
-        from bot.utils.telegram_utils import safe_send_message
+async def handle_referral_safe(user_id: int, referral_code: str) -> bool:
+    """
+    Race-condition-safe referral handler.
+    Uses SELECT FOR UPDATE to prevent duplicate credits.
+    """
+    from bot.database import get_session
+    from bot.models import User
+    from sqlalchemy import select
+
+    async with get_session() as session:
+        # Check if user already has a referrer
+        user = (await session.execute(
+            select(User).where(User.id == user_id)
+        )).scalar_one_or_none()
+
+        if not user or user.referred_by_id:
+            return False
+
+        # Lock the referrer row to prevent race condition
+        referrer = (await session.execute(
+            select(User)
+            .where(
+                User.referral_code == referral_code,
+                User.id != user_id,
+            )
+            .with_for_update()  # Row lock
+        )).scalar_one_or_none()
+
+        if not referrer:
+            return False
+
+        if (referrer.referral_bonus_accounts or 0) >= MAX_BONUS_ACCTS:
+            return False
+
+        referrer.referral_bonus_accounts = (referrer.referral_bonus_accounts or 0) + 1
+        user.referred_by_id = referrer.id
+
+        referrer.referral_count  = (referrer.referral_count  or 0) + 1
+        referrer.referral_points = (referrer.referral_points or 0) + POINTS_PER_REF
+        user.referral_points = (user.referral_points or 0) + NEW_USER_BONUS
+
+        # Milestone bonus every 5 referrals
+        milestones_earned = (referrer.referral_count or 0) // 5
+        if milestones_earned > (referrer.referral_milestones_claimed or 0):
+            referrer.referral_points += MILESTONE_POINTS
+            referrer.referral_milestones_claimed = milestones_earned
+
+        # Capture scalars inside session — avoids DetachedInstanceError after close
+        referrer_telegram_id   = referrer.telegram_id
+        referrer_bonus_count   = referrer.referral_bonus_accounts
+        referrer_count         = referrer.referral_count
         lang = referrer.language or "en"; fa = lang == "fa"
-        count = referrer.referral_count or 0
-        t1 = f"🎉 یک امتیاز رفرال کسب کردید! جمع: {count}" if fa else f"🎉 You earned a referral point! Total: {count}"
-        await safe_send_message(referrer.telegram_id, t1)
-        return True
-    except Exception as e:
-        logger.error(f"[referral] handle_referral_safe: {e}")
-        return False
+
+        logger.info(f"Referral credited: user={user_id} referred_by={referrer.id}")
+
+    # Notify referrer outside transaction — using captured scalars only
+    from bot.utils.telegram_utils import safe_send_message
+    t1 = f"🎉 یک امتیاز رفرال کسب کردید! جمع: {referrer_count}" if fa else f"🎉 You earned a referral point! Total: {referrer_count}"
+    await safe_send_message(
+        referrer_telegram_id,
+        f"{t1}\nاکانت رایگان اضافه: <b>{referrer_bonus_count}</b>/{MAX_BONUS_ACCTS}" if fa else f"{t1}\nFree account bonus: <b>{referrer_bonus_count}</b>/{MAX_BONUS_ACCTS}",
+        parse_mode="HTML",
+    )
+    return True
 
 
 async def cb_referral(update, context):

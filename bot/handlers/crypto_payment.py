@@ -134,14 +134,14 @@ async def cb_check_payment(update, context):
     lang=user.language; f=lang=="fa"
     await query.answer("🔍 "+("بررسی..." if f else "Checking..."),show_alert=False)
     tx_id=int(query.data.split(":")[-1])
-    from bot.handlers.crypto_payment import _get_transaction, _activate_subscription
-    from bot.services.payment_service import check_deposit
+    from bot.handlers.crypto_payment import _get_transaction
+    from bot.services.payment_service import check_deposit, activate_subscription_safe
     tx=await _get_transaction(tx_id, user.id)
     if not tx:
         await query.answer("❌ Not found", show_alert=True); return
     result=await check_deposit(tx["address"],tx["network"],tx["amount"],tx["created_at"])
     if result and result["enough"]:
-        await _activate_subscription(tx_id, result, user, lang)
+        await activate_subscription_safe(tx_id, result, reviewed_by="auto:coinex")
         await query.answer("✅ "+("تأیید شد!" if f else "Confirmed!"),show_alert=True)
     elif result:
         await query.answer(f"⏳ {result.get('received',0):.2f}/{tx['amount']:.0f} USDT",show_alert=True)
@@ -186,33 +186,6 @@ async def _get_transaction(tx_id, user_id):
         return {"id":tx.id,"address":tx.deposit_address,"network":tx.network,
                 "amount":float(tx.amount_usdt),"created_at":tx.address_generated_at or tx.created_at,
                 "plan":tx.plan,"period":tx.period,"user_id":tx.user_id}
-
-async def _activate_subscription(tx_id, payment_result, user, lang):
-    from bot.database import get_session
-    from bot.models import Transaction, TransactionStatus, User as U, PlanType as PT
-    from sqlalchemy import select
-    from datetime import timedelta
-    now=datetime.now(timezone.utc)
-    async with get_session() as session:
-        tx=(await session.execute(select(Transaction).where(Transaction.id==tx_id,Transaction.status==TransactionStatus.PENDING))).scalar_one_or_none()
-        if not tx: return
-        dur={"monthly":30,"biannual":183,"yearly":365}.get(tx.period.value,30)
-        db_u=(await session.execute(select(U).where(U.id==tx.user_id))).scalar_one_or_none()
-        if not db_u: return
-        base=db_u.subscription_expires_at
-        new_exp=(base+timedelta(days=dur)) if base and base>now else (now+timedelta(days=dur))
-        tx.status=TransactionStatus.APPROVED
-        tx.txid=payment_result["txids"][0] if payment_result.get("txids") else None
-        tx.reviewed_at=now; db_u.plan=tx.plan; db_u.subscription_expires_at=new_exp
-        db_u.subscription_pause_used=False; tg_id=db_u.telegram_id; exp_str=new_exp.strftime("%Y-%m-%d")
-    f=lang=="fa"
-    pn={"fa":{"pro":"⭐️ پرو","premium":"💎 پریمیوم"},"en":{"pro":"⭐️ Pro","premium":"💎 Premium"}}.get(lang,{"pro":"Pro","premium":"Premium"}).get(tx.plan.value,tx.plan.value)
-    msg=(f"🎉 <b>{'اشتراک ' if f else ''}{pn}{' فعال شد' if f else ' activated'}!</b>\n\n"
-         f"✅ {'پرداخت تأیید شد' if f else 'Payment confirmed'}\n"
-         f"📅 {'انقضا' if f else 'Expires'}: <b>{exp_str}</b>\n\n"
-         f"AiSocialFeed.com 🚀")
-    from bot.utils.telegram_utils import safe_send_message
-    await safe_send_message(tg_id, msg, parse_mode="HTML")
 
 async def cb_cancel_payment(update, context):
     """Cancel an active crypto payment and mark transaction as rejected."""

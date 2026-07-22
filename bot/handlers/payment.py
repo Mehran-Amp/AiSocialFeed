@@ -368,13 +368,12 @@ async def _create_transaction(
     period: Optional[str] = None,
     amount: float = 0.0,
 ) -> str:
-    """Create a pending transaction and return its reference number."""
-    from bot.models import Transaction, PlanType, SubscriptionPeriod, USDTAddress
+    """
+    Fixed version of _create_transaction.
+    Takes explicit plan/period/amount instead of reading from user.plan.
+    """
+    from bot.models import Transaction, PlanType, SubscriptionPeriod, USDTAddress, TransactionMethod, TransactionStatus
     from sqlalchemy import select
-
-    # Use explicit values; fall back to user.plan only as last resort
-    plan_enum = PlanType(plan) if plan else user.plan
-    period_enum = SubscriptionPeriod(period) if period else SubscriptionPeriod.MONTHLY
 
     async with get_session() as session:
         addr = (await session.execute(
@@ -386,8 +385,8 @@ async def _create_transaction(
 
         tx = Transaction(
             user_id=user.id,
-            plan=plan_enum,
-            period=period_enum,
+            plan=PlanType(plan) if plan else user.plan,
+            period=SubscriptionPeriod(period) if period else SubscriptionPeriod.MONTHLY,
             amount_usdt=amount,
             payment_method=TransactionMethod.CRYPTO,
             status=TransactionStatus.PENDING,
