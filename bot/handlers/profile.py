@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 
 
 def _plan_str(user): return user.plan.value if hasattr(user.plan,"value") else str(user.plan)
-def _f(lang): return lang=="fa"
+def is_persian(lang: str) -> bool: return lang == "fa"
 
 
 # ── SHOW PROFILE ──────────────────────────────────────────────────────────────
 
 async def show_profile(update, context, user):
-    lang=user.language; fa=_f(lang); plan=_plan_str(user)
+    lang=user.language; fa=is_persian(lang); plan=_plan_str(user)
     icon={"free":"🆓","pro":"⭐️","premium":"💎"}.get(plan,"")
     name=getattr(user,"first_name",None) or "User"
     exp=""
@@ -44,7 +44,7 @@ async def show_profile(update, context, user):
 # ── SUBSCRIPTION ──────────────────────────────────────────────────────────────
 
 async def _show_subscription(query, user):
-    lang=user.language; fa=_f(lang); plan=_plan_str(user)
+    lang=user.language; fa=is_persian(lang); plan=_plan_str(user)
     icon={"free":"🆓","pro":"⭐️","premium":"💎"}.get(plan,"")
     expires_days=None; price_monthly=0.0
     if user.subscription_expires_at:
@@ -75,7 +75,7 @@ async def cb_profile(update, context):
     query=update.callback_query; await query.answer()
     user=context.user_data.get("user")
     if not user: return
-    lang=user.language; fa=_f(lang); plan=_plan_str(user)
+    lang=user.language; fa=is_persian(lang); plan=_plan_str(user)
     parts=query.data.split(":"); action=parts[1] if len(parts)>1 else ""
 
     if action=="menu":
@@ -117,7 +117,7 @@ async def cb_profile(update, context):
 
 
 async def _legacy_action(query,user,action,lang,parts):
-    fa=_f(lang)
+    fa=is_persian(lang)
     async with get_session() as s:
         from sqlalchemy import select
         from bot.models import User as U
@@ -142,7 +142,7 @@ async def cb_settings(update, context):
     user=context.user_data.get("user")
     if not user:
         await query.answer(); return
-    lang=user.language; fa=_f(lang); plan=_plan_str(user)
+    lang=user.language; fa=is_persian(lang); plan=_plan_str(user)
     parts=query.data.split(":"); action=parts[1] if len(parts)>1 else ""
 
     if action=="locked":
@@ -302,7 +302,7 @@ async def cb_ai(update, context):
 
     elif action=="setlang":
         code=parts[2] if len(parts)>2 else "en"
-        fa=_f(lang)
+        fa=is_persian(lang)
         if code=="custom":
             from bot.utils.keyboards import back_button
             t1="نام زبان مقصد را تایپ کنید (می‌توانید با کیبورد خودتان هم تایپ کنید):" if fa else \
@@ -337,7 +337,7 @@ async def cb_sub(update, context):
     query=update.callback_query; await query.answer()
     user=context.user_data.get("user")
     if not user: return
-    lang=user.language; fa=_f(lang); action=query.data.split(":")[1]
+    lang=user.language; fa=is_persian(lang); action=query.data.split(":")[1]
     plan=_plan_str(user)
 
     if action=="compare":
@@ -427,7 +427,7 @@ async def cb_help(update, context):
     query=update.callback_query; await query.answer()
     user=context.user_data.get("user")
     if not user: return
-    lang=user.language; fa=_f(lang); plan=_plan_str(user)
+    lang=user.language; fa=is_persian(lang); plan=_plan_str(user)
     action=query.data.split(":")[1] if ":" in query.data else ""
 
     if action=="faq":
@@ -519,7 +519,7 @@ async def cb_help(update, context):
 # ── EXPORT / CHANNEL / DIGEST (preserved) ────────────────────────────────────
 
 async def _handle_export(query, user, fmt):
-    lang=user.language; fa=_f(lang)
+    lang=user.language; fa=is_persian(lang)
     try:
         async with get_session() as s:
             from sqlalchemy import select
@@ -551,7 +551,7 @@ async def _handle_export(query, user, fmt):
 
 
 async def _show_channel_settings(query, user):
-    lang=user.language; fa=_f(lang)
+    lang=user.language; fa=is_persian(lang)
     current=user.channel_forward_id or ""
     t1="فوروارد به کانال" if fa else "Channel Forward"
     t2="آی‌دی کانال فعلی:" if fa else "Current channel ID:"
@@ -562,7 +562,7 @@ async def _show_channel_settings(query, user):
 
 
 async def show_stats(update, context, user):
-    lang=user.language; fa=_f(lang)
+    lang=user.language; fa=is_persian(lang)
     try:
         async with get_session() as s:
             from sqlalchemy import select,func
@@ -580,7 +580,7 @@ async def show_stats(update, context, user):
 
 
 async def show_daily_summary(update, context, user):
-    lang=user.language; fa=_f(lang)
+    lang=user.language; fa=is_persian(lang)
     t1="خلاصه روزانه در حال توسعه است." if fa else "Daily summary coming soon."
     await safe_send_message(update.effective_user.id,f"📅 {t1}")
 
@@ -589,7 +589,7 @@ async def cb_digest(update, context):
     query=update.callback_query; await query.answer()
     user=context.user_data.get("user")
     if not user: return
-    lang=user.language; fa=_f(lang)
+    lang=user.language; fa=is_persian(lang)
     await query.edit_message_text(
         "📧 "+("تنظیمات دایجست در حال توسعه." if fa else "Digest settings coming soon."),
         reply_markup=back_button(lang,"profile:settings"))
