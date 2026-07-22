@@ -57,13 +57,17 @@ async def _async_digest() -> dict:
                 .where(User.created_at >= ago24)
             )).scalar() or 0
 
-            plan_counts = {}
-            for plan in [PlanType.FREE, PlanType.PRO, PlanType.PREMIUM]:
-                c = (await session.execute(
-                    select(func.count()).select_from(User)
-                    .where(User.plan == plan, User.is_banned == False)
-                )).scalar() or 0
-                plan_counts[plan.value] = c
+            plan_counts = {p.value: 0 for p in [PlanType.FREE, PlanType.PRO, PlanType.PREMIUM]}
+            rows = (await session.execute(
+                select(User.plan, func.count()).select_from(User)
+                .where(
+                    User.plan.in_([PlanType.FREE, PlanType.PRO, PlanType.PREMIUM]),
+                    User.is_banned == False
+                )
+                .group_by(User.plan)
+            )).all()
+            for plan, count in rows:
+                plan_counts[plan.value] = count
 
             active_24h = (await session.execute(
                 select(func.count()).select_from(User)
