@@ -362,14 +362,14 @@ def download_video_task(self, user_telegram_id: int, url: str, quality: str = "7
                 )
                 return {"status": "link_sent", "reason": "too_large"}
 
+            import pathlib
             # Send video
-            with open(downloaded_path, "rb") as f:
-                await bot.send_video(
-                    chat_id=user_telegram_id,
-                    video=f,
-                    caption=t("post.download_ready", "en"),
-                    supports_streaming=True,
-                )
+            await bot.send_video(
+                chat_id=user_telegram_id,
+                video=pathlib.Path(downloaded_path),
+                caption=t("post.download_ready", "en"),
+                supports_streaming=True,
+            )
 
             return {"status": "ok", "size_mb": round(file_size_mb, 1)}
 
