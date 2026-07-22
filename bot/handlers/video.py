@@ -12,7 +12,7 @@ Flow:
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
@@ -97,6 +97,67 @@ def _decode_url(key: str) -> Optional[str]:
     return _video_cache.get(f"url:{key}")
 
 
+async def _extract_common_data(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> tuple[Any, Optional[User], str, Optional[str], str]:
+    """Helper to extract common callback query data."""
+    query = update.callback_query
+
+    user: Optional[User] = context.user_data.get("user")
+    lang = user.language if user else "en"
+
+    # Extract url_key which is always the last part
+    url_key = query.data.split(":")[-1]
+    original_url = _decode_url(url_key)
+
+    return query, user, lang, original_url, url_key
+
+
+async def _get_cached_video_or_error(
+    query: Any,
+    original_url: str,
+    lang: str,
+    fetch_if_missing: bool = False,
+) -> Optional[VideoInfo]:
+    """Helper to get cached video info or show error message."""
+    cached = _video_cache.get(original_url)
+
+    if not cached and fetch_if_missing:
+        await query.edit_message_text(
+            "⏳ در حال دریافت کیفیت‌های موجود..." if lang == "fa"
+            else "⏳ Fetching available qualities...",
+        )
+        cached = await extract_video_info(original_url)
+        if not cached.error:
+            _video_cache[original_url] = cached
+
+    if not cached:
+        if not fetch_if_missing:
+            await query.edit_message_text("⚠️ اطلاعات ویدیو پیدا نشد.", reply_markup=home_button(lang))
+        else:
+            await query.edit_message_text(
+                "⚠️ کیفیتی برای دانلود پیدا نشد.\n"
+                f"لینک مستقیم: {original_url}" if lang == "fa"
+                else f"⚠️ No downloadable quality found.\nDirect link: {original_url}"
+            )
+        return None
+
+    if fetch_if_missing and (cached.error or not cached.qualities):
+        await query.edit_message_text(
+            "⚠️ کیفیتی برای دانلود پیدا نشد.\n"
+            f"لینک مستقیم: {original_url}" if lang == "fa"
+            else f"⚠️ No downloadable quality found.\nDirect link: {original_url}"
+        )
+        return None
+
+    if not fetch_if_missing and not cached.qualities:
+        await query.edit_message_text("⚠️ اطلاعات ویدیو پیدا نشد.", reply_markup=home_button(lang))
+        return None
+
+    return cached
+
+
 # ─────────────────────────────────────────────
 #  Show Quality Selection
 # ─────────────────────────────────────────────
@@ -106,42 +167,18 @@ async def show_quality_selection(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Called when user taps ⬇️ دانلود button under a post."""
-    query = update.callback_query
+    query, user, lang, original_url, _ = await _extract_common_data(update, context)
     await query.answer()
 
-    user: Optional[User] = context.user_data.get("user")
     if not user:
         return
-
-    lang = user.language
-
-    # Extract URL from callback data: "vq:URL_HASH"
-    url_key = query.data.split(":", 1)[1]
-    original_url = _decode_url(url_key)
 
     if not original_url:
         await query.edit_message_text("⚠️ لینک منقضی شده. پست رو دوباره باز کن.", reply_markup=home_button(lang))
         return
 
-    # Show loading
-    await query.edit_message_text(
-        "⏳ در حال دریافت کیفیت‌های موجود..." if lang == "fa"
-        else "⏳ Fetching available qualities...",
-    )
-
-    # Check cache
-    cached = _video_cache.get(original_url)
+    cached = await _get_cached_video_or_error(query, original_url, lang, fetch_if_missing=True)
     if not cached:
-        cached = await extract_video_info(original_url)
-        if not cached.error:
-            _video_cache[original_url] = cached
-
-    if cached.error or not cached.qualities:
-        await query.edit_message_text(
-            "⚠️ کیفیتی برای دانلود پیدا نشد.\n"
-            f"لینک مستقیم: {original_url}" if lang == "fa"
-            else f"⚠️ No downloadable quality found.\nDirect link: {original_url}"
-        )
         return
 
     # Build quality selection message
@@ -168,26 +205,19 @@ async def send_quality_link(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """User selected a quality → send direct stream URL."""
-    query = update.callback_query
+    query, _, lang, original_url, _ = await _extract_common_data(update, context)
     await query.answer()
-
-    user: Optional[User] = context.user_data.get("user")
-    lang = user.language if user else "en"
 
     # Parse: "vlink:HEIGHT:URL_KEY"
     parts = query.data.split(":", 2)
     height = int(parts[1])
-    url_key = parts[2]
-    original_url = _decode_url(url_key)
 
     if not original_url:
         await query.edit_message_text("⚠️ لینک منقضی شده.", reply_markup=home_button(lang))
         return
 
-    # Get cached info
-    cached = _video_cache.get(original_url)
+    cached = await _get_cached_video_or_error(query, original_url, lang)
     if not cached:
-        await query.edit_message_text("⚠️ اطلاعات ویدیو پیدا نشد.", reply_markup=home_button(lang))
         return
 
     # Find requested quality
@@ -230,25 +260,19 @@ async def start_file_download(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Premium only: show quality buttons for actual file download."""
-    query = update.callback_query
+    query, user, lang, original_url, url_key = await _extract_common_data(update, context)
     await query.answer()
 
-    user: Optional[User] = context.user_data.get("user")
     if not user or user.plan != PlanType.PREMIUM:
         await query.answer("این قابلیت فقط برای پریمیوم", show_alert=True)
         return
-
-    lang = user.language
-    url_key = query.data.split(":", 1)[1]
-    original_url = _decode_url(url_key)
 
     if not original_url:
         await query.edit_message_text("⚠️ لینک منقضی شده.", reply_markup=home_button(lang))
         return
 
-    cached = _video_cache.get(original_url)
-    if not cached or not cached.qualities:
-        await query.edit_message_text("⚠️ اطلاعات ویدیو پیدا نشد.", reply_markup=home_button(lang))
+    cached = await _get_cached_video_or_error(query, original_url, lang)
+    if not cached:
         return
 
     # Show quality buttons for actual download
@@ -290,25 +314,24 @@ async def download_file_quality(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Premium: Download actual file for selected quality."""
-    query = update.callback_query
+    query, user, lang, original_url, _ = await _extract_common_data(update, context)
     await query.answer()
 
-    user: Optional[User] = context.user_data.get("user")
     if not user or user.plan != PlanType.PREMIUM:
         return
 
-    lang = user.language
     parts = query.data.split(":", 2)
     height = int(parts[1])
-    url_key = parts[2]
-    original_url = _decode_url(url_key)
 
     if not original_url:
         await query.edit_message_text("⚠️ لینک منقضی شده.", reply_markup=home_button(lang))
         return
 
-    cached = _video_cache.get(original_url)
-    quality = next((q for q in (cached.qualities if cached else []) if q.height == height), None)
+    cached = await _get_cached_video_or_error(query, original_url, lang)
+    if not cached:
+        return
+
+    quality = next((q for q in cached.qualities if q.height == height), None)
 
     if not quality:
         await query.edit_message_text("⚠️ کیفیت پیدا نشد.", reply_markup=home_button(lang))
@@ -419,14 +442,8 @@ async def send_audio_link(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
     """Extract and send audio-only link for a video post."""
-    query = update.callback_query
+    query, _, lang, original_url, _ = await _extract_common_data(update, context)
     await query.answer()
-
-    user: Optional[User] = context.user_data.get("user")
-    lang = user.language if user else "en"
-
-    url_key = query.data.split(":", 1)[1]
-    original_url = _decode_url(url_key)
 
     if not original_url:
         await query.edit_message_text("⚠️ لینک منقضی شده.", reply_markup=home_button(lang))
