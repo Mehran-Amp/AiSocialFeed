@@ -216,10 +216,11 @@ def _resolve_language_name(raw: str) -> tuple[str, str]:
     Matches curated list case/diacritic-insensitively; falls back to
     storing the raw typed text as a custom label if no match found.
     """
-    key = raw.strip().lower()
+    stripped = raw.strip()
+    key = stripped.lower()
     if key in _LANGUAGE_NAME_MAP:
-        return _LANGUAGE_NAME_MAP[key], raw.strip()
-    return raw.strip()[:10], raw.strip()  # unmatched: store raw text as both code+label (issue-6 fallback)
+        return _LANGUAGE_NAME_MAP[key], stripped
+    return stripped[:10], stripped  # unmatched: store raw text as both code+label (issue-6 fallback)
 
 
 async def _handle_waiting_for(update, context, user, waiting_for, text) -> bool:
