@@ -121,8 +121,8 @@ async def check_deposit(
 
                 # BUG-5 fix: skip deposits older than payment request creation time
                 tx_time_ms = tx.get("created_at") or tx.get("actual_time_at") or 0
-                tx_timestamp = int(tx_time_ms) / 1000 if tx_time_ms else 0.0
-                if tx_timestamp and tx_timestamp < since_ts:
+                tx_timestamp = float(tx_time_ms) / 1000.0 if tx_time_ms else 0.0
+                if tx_timestamp > 0 and tx_timestamp < since_ts:
                     continue  # this deposit predates this payment request
 
                 if (
