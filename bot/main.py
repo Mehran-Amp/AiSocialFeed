@@ -126,9 +126,7 @@ def main() -> None:
         # Webhook mode (production)
         # DEAD-4 fix: strip any trailing /webhook from env var before appending
         # so WEBHOOK_URL=https://example.com/webhook doesn't become .../webhook/webhook
-        base_url = config.telegram.webhook_url.rstrip("/")
-        if base_url.endswith("/webhook"):
-            base_url = base_url[: -len("/webhook")]
+        base_url = config.telegram.webhook_url.rstrip("/").removesuffix("/webhook")
         webhook_url = f"{base_url}/webhook"
         logger.info(f"Starting in WEBHOOK mode: {webhook_url}")
         app.run_webhook(
