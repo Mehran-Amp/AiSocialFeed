@@ -162,8 +162,14 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     is_accounts_btn = text.startswith("📋 ") or text.startswith("➕ ")
 
     if text == updates_label:
-        from bot.handlers.accounts import handle_updates
-        await handle_updates(update, context, user)
+        if user.plan == PlanType.FREE:
+            msg = "🔒 این گزینه فقط برای کاربران Pro و Premium فعال است." if fa else "🔒 This option is only enabled for Pro and Premium users."
+            await update.message.reply_text(msg)
+            from bot.handlers.payment import show_plans
+            await show_plans(update, context, user)
+        else:
+            from bot.handlers.accounts import handle_updates
+            await handle_updates(update, context, user)
         return
 
     if text == profile_lbl:
