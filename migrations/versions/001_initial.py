@@ -15,6 +15,14 @@ depends_on = None
 
 
 def upgrade() -> None:
+    _create_core_tables()
+    _create_payment_tables()
+    _create_system_tables()
+    _create_support_tables()
+    _add_missing_columns()
+
+
+def _create_core_tables() -> None:
     # plan_configs
     op.create_table(
         "plan_configs",
@@ -140,6 +148,21 @@ def upgrade() -> None:
     op.create_index("ix_sent_posts_account_sent", "sent_posts", ["account_id", "sent_at"])
     op.create_index("ix_sent_posts_cleanup", "sent_posts", ["sent_at"])
 
+def _create_payment_tables() -> None:
+    # admin_credit_logs
+    op.create_table(
+        "admin_credit_logs",
+        sa.Column("id", sa.BigInteger, primary_key=True, autoincrement=True),
+        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("plan", sa.String(16), nullable=False),
+        sa.Column("days", sa.Integer, nullable=False),
+        sa.Column("reason", sa.String(256), nullable=True),
+        sa.Column("granted_by", sa.String(64), nullable=False),
+        sa.Column("granted_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+    )
+    op.create_index("ix_credit_logs_user", "admin_credit_logs", ["user_id", "granted_at"])
+
     # usdt_addresses
     op.create_table(
         "usdt_addresses",
@@ -179,6 +202,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
+def _create_system_tables() -> None:
     # system_configs
     op.create_table(
         "system_configs",
@@ -190,30 +214,6 @@ def upgrade() -> None:
         sa.Column("updated_by", sa.String(64)),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
-
-    # support_tickets
-    op.create_table(
-        "support_tickets",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("ticket_number", sa.String(16), unique=True, nullable=False),
-        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("subject", sa.String(32), nullable=False),
-        sa.Column("status", sa.String(16), default="open"),
-        sa.Column("closed_at", sa.DateTime(timezone=True)),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
-
-    # ticket_messages
-    op.create_table(
-        "ticket_messages",
-        sa.Column("id", sa.Integer, primary_key=True),
-        sa.Column("ticket_id", sa.Integer, sa.ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("sender_type", sa.String(10), nullable=False),
-        sa.Column("message", sa.Text),
-        sa.Column("attachments", postgresql.JSON, default=list),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 
     # system_logs
@@ -293,6 +293,32 @@ def upgrade() -> None:
     )
     op.create_index("ix_bookmarks_user", "bookmarks", ["user_id", "created_at"])
 
+def _create_support_tables() -> None:
+    # support_tickets
+    op.create_table(
+        "support_tickets",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("ticket_number", sa.String(16), unique=True, nullable=False),
+        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("subject", sa.String(32), nullable=False),
+        sa.Column("status", sa.String(16), default="open"),
+        sa.Column("closed_at", sa.DateTime(timezone=True)),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+    )
+
+    # ticket_messages
+    op.create_table(
+        "ticket_messages",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("ticket_id", sa.Integer, sa.ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("sender_type", sa.String(10), nullable=False),
+        sa.Column("message", sa.Text),
+        sa.Column("attachments", postgresql.JSON, default=list),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+    )
+
+def _add_missing_columns() -> None:
     # Add platforms_json to plan_configs
     op.add_column("plan_configs", sa.Column("platforms_json", postgresql.JSON, nullable=True))
 
@@ -300,19 +326,6 @@ def upgrade() -> None:
     op.add_column("users", sa.Column("bookmark_count", sa.Integer, default=0))
 
 
-    # admin_credit_logs
-    op.create_table(
-        "admin_credit_logs",
-        sa.Column("id", sa.BigInteger, primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("plan", sa.String(16), nullable=False),
-        sa.Column("days", sa.Integer, nullable=False),
-        sa.Column("reason", sa.String(256), nullable=True),
-        sa.Column("granted_by", sa.String(64), nullable=False),
-        sa.Column("granted_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-    )
-    op.create_index("ix_credit_logs_user", "admin_credit_logs", ["user_id", "granted_at"])
 
     # plan_configs - add features_json and prices (guard: may already exist in create_table)
     try:
