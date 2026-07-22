@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch
 
 from bot.platforms.fetchers import make_instant_view_button
-from config import config
+from config.settings import config
 
 def test_make_instant_view_button_no_rhash():
     """Test button generation when rhash is not configured."""
