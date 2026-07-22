@@ -136,6 +136,7 @@ async def apply_grace_period(user_id: int) -> None:
         if not user or user.plan == PlanType.FREE: return
         user.original_plan_before_grace = user.plan
         user.grace_until = now + timedelta(hours=48)
+        await session.commit()
     logger.info(f"Grace period applied: user={user_id}")
 
 async def should_show_upsell(user: User, post_count: int) -> bool:
