@@ -19,44 +19,57 @@ def _is_admin(tg_id: int) -> bool:
     return tg_id == config.telegram.admin_id
 
 
+async def _handle_referral_args(update: Update, lang: str, user: User, args: list[str]) -> None:
+    from bot.handlers.referral import handle_referral_safe
+    credited = await handle_referral_safe(user.id, args[0][4:])
+    if credited:
+        f = lang == "fa"
+        await safe_send_message(
+            update.effective_user.id,
+            "🎁 " + ("خوش آمدید! دوستتان یک امتیاز کسب کرد." if f
+                     else "Welcome! Your referral bonus was applied."),
+        )
+
+
+async def _handle_admin_user_deep_link(update: Update, args: list[str]) -> bool:
+    uid = int(args[0].split("_")[1])
+    from bot.database import get_session
+    from bot.models import User as UserModel
+    from bot.utils.keyboards import admin_user_actions
+    from sqlalchemy import select
+    async with get_session() as session:
+        u = (await session.execute(
+            select(UserModel).where(UserModel.id == uid)
+        )).scalar_one_or_none()
+        if u:
+            plan      = u.plan.value if hasattr(u.plan, "value") else str(u.plan)
+            expires   = u.subscription_expires_at.strftime("%Y-%m-%d") if u.subscription_expires_at else "—"
+            is_banned = getattr(u, "is_banned", False)
+            await update.message.reply_text(
+                f"👤 <b>User Detail</b>\n\nID: <code>{uid}</code>\n"
+                f"Plan: <b>{plan}</b>\nExpires: {expires}",
+                parse_mode=ParseMode.HTML,
+                reply_markup=admin_user_actions(uid, is_banned),
+            )
+            return True
+    return False
+
+
 @auth_middleware
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user: User = context.user_data["user"]
     lang = user.language
     args = context.args or []
+
     if args and args[0].startswith("ref_"):
-        from bot.handlers.referral import handle_referral_safe
-        credited = await handle_referral_safe(user.id, args[0][4:])
-        if credited:
-            f = lang == "fa"
-            await safe_send_message(
-                update.effective_user.id,
-                "🎁 " + ("خوش آمدید! دوستتان یک امتیاز کسب کرد." if f
-                         else "Welcome! Your referral bonus was applied."),
-            )
+        await _handle_referral_args(update, lang, user, args)
 
     # Deep-link from Django Admin "Open in TG" button — only for admin
     if args and args[0].startswith("adminuser_") and _is_admin(update.effective_user.id):
-        uid = int(args[0].split("_")[1])
-        from bot.database import get_session
-        from bot.models import User as UserModel
-        from bot.utils.keyboards import admin_user_actions
-        from sqlalchemy import select
-        async with get_session() as session:
-            u = (await session.execute(
-                select(UserModel).where(UserModel.id == uid)
-            )).scalar_one_or_none()
-            if u:
-                plan      = u.plan.value if hasattr(u.plan, "value") else str(u.plan)
-                expires   = u.subscription_expires_at.strftime("%Y-%m-%d") if u.subscription_expires_at else "—"
-                is_banned = getattr(u, "is_banned", False)
-                await update.message.reply_text(
-                    f"👤 <b>User Detail</b>\n\nID: <code>{uid}</code>\n"
-                    f"Plan: <b>{plan}</b>\nExpires: {expires}",
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=admin_user_actions(uid, is_banned),
-                )
-                return
+        handled = await _handle_admin_user_deep_link(update, args)
+        if handled:
+            return
+
     is_new = (
         user.created_at is not None
         and (datetime.now(timezone.utc) - user.created_at).total_seconds() < 60
