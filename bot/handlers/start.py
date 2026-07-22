@@ -11,7 +11,7 @@ from bot.utils.fixes import cmd_cancel
 from bot.utils.keyboards import language_keyboard, main_menu
 from bot.utils.telegram_utils import safe_send_message
 from bot.utils.translator import t, SUPPORTED_LANGUAGES, get_language_name
-from config import config
+from config.settings import config
 logger = logging.getLogger(__name__)
 
 

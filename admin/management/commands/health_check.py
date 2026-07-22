@@ -149,7 +149,7 @@ class Command(BaseCommand):
     async def _check_redis(self) -> dict:
         try:
             import redis.asyncio as aioredis
-            from config import config
+            from config.settings import config
             r = aioredis.from_url(config.redis.url)
             await r.ping()
             info = await r.info("memory")
@@ -164,7 +164,7 @@ class Command(BaseCommand):
 
     async def _check_telegram(self) -> dict:
         try:
-            from config import config
+            from config.settings import config
             import httpx
             async with httpx.AsyncClient(timeout=10) as client:
                 r = await client.get(
@@ -197,7 +197,7 @@ class Command(BaseCommand):
     async def _check_celery(self) -> dict:
         try:
             import redis.asyncio as aioredis
-            from config import config
+            from config.settings import config
             r = aioredis.from_url(config.redis.url)
             hb_keys = await r.keys("celery:worker:heartbeat:*")
             await r.aclose()
@@ -213,7 +213,7 @@ class Command(BaseCommand):
     async def _check_circuits(self) -> dict:
         try:
             import redis.asyncio as aioredis
-            from config import config
+            from config.settings import config
             r = aioredis.from_url(config.redis.url)
             open_keys = await r.keys("cb:open:*")
             await r.aclose()

@@ -40,7 +40,7 @@ async def get_redis():
     """
     global _redis_pool
     import redis.asyncio as aioredis
-    from config import config
+    from config.settings import config
 
     if _redis_pool is None:
         _redis_pool = aioredis.from_url(

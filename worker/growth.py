@@ -9,7 +9,7 @@ SocialtoFeed — Growth & Re-engagement Tasks
 
 from __future__ import annotations
 
-from config import config
+from config.settings import config
 import asyncio
 import logging
 import os
@@ -251,7 +251,7 @@ def cleanup_download_files() -> dict:
     Deletes video files older than 1 hour from /media/downloads.
     Prevents disk fill-up from crashed download tasks.
     """
-    from config import config
+    from config.settings import config
 
     download_dir = config.download.output_dir
     if not os.path.exists(download_dir):
@@ -313,7 +313,7 @@ def send_share_prompts() -> dict:
                 if (now - user.share_prompt_last_at).days < 7:
                     continue
             # Send share prompt via Telegram
-            from config import config
+            from config.settings import config
             from bot.utils.telegram_utils import safe_send_message
             from bot.handlers.share_bot import _MSGS
             from bot.utils.keyboards import share_bot_keyboard

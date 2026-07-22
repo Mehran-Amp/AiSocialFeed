@@ -16,7 +16,7 @@ from typing import Optional
 import redis.asyncio  # noqa: F401 — keep for type hints in this module
 from openai import AsyncOpenAI
 
-from config import config
+from config.settings import config
 from bot.models import LogModule
 from bot.utils.logger import STFLogger
 

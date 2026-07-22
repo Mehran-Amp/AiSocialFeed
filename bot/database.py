@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy import text
 
-from config import config
+from config.settings import config
 from bot.models import Base
 
 logger = logging.getLogger(__name__)

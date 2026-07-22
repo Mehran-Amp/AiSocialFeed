@@ -138,7 +138,7 @@ async def verify_txid_tronscan(txid: str, expected_amount: float, expected_addre
     Returns dict with: valid (bool), amount, from_address, to_address, timestamp
     """
     import httpx
-    from config import config
+    from config.settings import config
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 

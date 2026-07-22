@@ -34,7 +34,7 @@ async def get_plan_features(plan: PlanType) -> dict:
                 return cfg.features_json
     except Exception as e:
         logger.warning(f"DB plan features failed: {e}")
-    from config import DEFAULT_PLAN_FEATURES
+    from config.settings import DEFAULT_PLAN_FEATURES
     return DEFAULT_PLAN_FEATURES.get(plan.value, DEFAULT_PLAN_FEATURES["free"])
 
 async def get_user_features(user: User) -> dict:

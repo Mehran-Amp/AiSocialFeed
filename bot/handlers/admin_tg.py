@@ -30,7 +30,7 @@ from bot.utils.keyboards import (
     admin_user_actions,
 )
 from bot.utils.telegram_utils import safe_send_message
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +277,7 @@ async def cb_user_search_start(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def cb_user_search_receive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    from config import config as cfg
+    from config.settings import config as cfg
     if update.effective_user.id != cfg.telegram.admin_id:
         return _SEARCH_USER
 
@@ -493,7 +493,7 @@ async def cb_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def bc_receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    from config import config as cfg
+    from config.settings import config as cfg
     if update.effective_user.id != cfg.telegram.admin_id:
         return _BROADCAST_TEXT
     context.user_data["bc_text"] = update.message.text

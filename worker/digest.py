@@ -30,7 +30,7 @@ async def _async_digest() -> dict:
     from bot.database import init_db, get_session
     await init_db()
 
-    from config import config
+    from config.settings import config
     if not config.admin.channel_configured:
         logger.warning("[digest] ADMIN_CHANNEL_ID not set — skipping digest")
         return {"skipped": "no channel configured"}

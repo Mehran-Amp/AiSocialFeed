@@ -142,7 +142,7 @@ def require_admin(func: Callable) -> Callable:
             ...
     """
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        from config import config
+        from config.settings import config
         tg_user = update.effective_user
         if tg_user is None or tg_user.id != config.telegram.admin_id:
             logger.warning(f"Unauthorized admin access attempt: tg_id={tg_user.id if tg_user else 'unknown'}")

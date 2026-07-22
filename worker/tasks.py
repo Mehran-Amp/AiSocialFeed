@@ -21,7 +21,7 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
         asyncio.run(init_db())
         # v3.2: write heartbeat key so health_check and digest can confirm worker is alive
         import redis as redis_lib
-        from config import config as cfg
+        from config.settings import config as cfg
         r = redis_lib.from_url(cfg.redis.url, decode_responses=True)
         import socket
         hb_key = f"celery:worker:heartbeat:{socket.gethostname()}"
@@ -32,7 +32,7 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
 
 from celery.schedules import crontab
 
-from config import config
+from config.settings import config
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ def fetch_account_task(self, account_id: int) -> dict:
         from bot.platforms.fetchers import get_fetcher
         from bot.models import Account, User, PlanType
         from sqlalchemy import select, update
-        from config import config as cfg
+        from config.settings import config as cfg
 
         await init_db()
 
@@ -241,7 +241,7 @@ def schedule_pending_fetches() -> dict:
         # PERF-3 fix: cursor-based pagination so all accounts are covered over
         # successive beat cycles, even when active accounts exceed 5,000.
         import redis as redis_lib
-        from config import config as cfg
+        from config.settings import config as cfg
         _r = redis_lib.from_url(cfg.redis.url, decode_responses=True)
         last_id = int(_r.get("scheduler:last_account_id") or 0)
 
@@ -310,7 +310,7 @@ def download_video_task(self, user_telegram_id: int, url: str, quality: str = "7
         import yt_dlp
         from bot.utils.telegram_utils import get_bot, safe_send_message
         from bot.utils.translator import t
-        from config import config as cfg
+        from config.settings import config as cfg
 
         os.makedirs(cfg.download.output_dir, exist_ok=True)
 
@@ -460,7 +460,7 @@ def check_subscriptions() -> dict:
         from bot.models import User, PlanType
         from bot.utils.telegram_utils import safe_send_message
         from bot.utils.translator import t
-        from config import config as cfg
+        from config.settings import config as cfg
 
         await init_db()  # INC-4 fix: was the only task missing this call
         now = datetime.now(timezone.utc)
@@ -579,7 +579,7 @@ def cleanup_old_posts() -> dict:
         from bot.database import init_db, get_session
         from sqlalchemy import delete
         from bot.models import SentPost
-        from config import config as cfg
+        from config.settings import config as cfg
 
         await init_db()
         cutoff = datetime.now(timezone.utc) - timedelta(days=cfg.app.dedup_window_days)
@@ -622,7 +622,7 @@ def check_platform_health() -> dict:
         import httpx
         import json
         from bot.cache import get_redis  # PERF-4: shared pool
-        from config import config as cfg
+        from config.settings import config as cfg
 
         r = await get_redis()
 
@@ -798,7 +798,7 @@ _webhook_redis_pool = None
 def _get_webhook_redis():
     """Return a Redis client backed by a shared connection pool."""
     import redis as redis_lib
-    from config import config as cfg
+    from config.settings import config as cfg
     global _webhook_redis_pool
     if _webhook_redis_pool is None:
         _webhook_redis_pool = redis_lib.ConnectionPool.from_url(

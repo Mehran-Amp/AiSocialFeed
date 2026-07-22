@@ -6,7 +6,7 @@ Fernet symmetric encryption for sensitive values (API keys, etc.)
 import base64
 import hashlib
 from cryptography.fernet import Fernet
-from config import config
+from config.settings import config
 
 
 def _get_fernet() -> Fernet:
