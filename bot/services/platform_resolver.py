@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import re
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 import feedparser
 import httpx
@@ -222,7 +222,9 @@ def _extract_instagram_username(raw: str) -> Optional[str]:
 
 # ─── RSS (direct) ────────────────────────────
 
-async def _resolve_rss(raw: str) -> Optional[dict]:
+async def _resolve_rss(raw: str, _depth: int = 0) -> Optional[dict]:
+    if _depth > 5:
+        return None
     if not raw.startswith("http"):
         raw = f"https://{raw}"
     # Block SSRF: internal Docker services and private IPs
@@ -233,6 +235,15 @@ async def _resolve_rss(raw: str) -> Optional[dict]:
     client = _get_client()
     try:
         resp = await client.get(raw, timeout=15.0)
+
+        # Handle redirects manually to prevent SSRF
+        if resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get("Location")
+            if not location:
+                return None
+            location = urljoin(raw, location)
+            return await _resolve_rss(location, _depth + 1)
+
         if resp.status_code != 200:
             return None
 
@@ -241,7 +252,7 @@ async def _resolve_rss(raw: str) -> Optional[dict]:
         if not feed.get("version") and not feed.entries:
             rss_url = _autodiscover_rss(resp.text, raw)
             if rss_url:
-                return await _resolve_rss(rss_url)
+                return await _resolve_rss(rss_url, _depth + 1)
             return None
 
         name = feed.feed.get("title", raw)
