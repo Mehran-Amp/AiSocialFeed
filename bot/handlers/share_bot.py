@@ -39,7 +39,7 @@ async def maybe_show_share_prompt(update, context, user) -> bool:
     if user.created_at and (now - user.created_at).days > 21: return False
     if user.share_prompt_last_at and (now - user.share_prompt_last_at).days < INTERVAL_DAYS: return False
     from config import config
-    ref = f"https://t.me/{config.app.bot_username}?start=ref_{user.telegram_id}"
+    ref = f"https://t.me/{config.telegram.username}?start=ref_{user.telegram_id}"
     lang = user.language
     msg = _MSGS.get(lang, _MSGS["en"])
     await update.effective_message.reply_text(msg, parse_mode=ParseMode.HTML,
