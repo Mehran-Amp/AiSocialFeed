@@ -406,18 +406,20 @@ def status_keyboard(lang)->InlineKeyboardMarkup:
 # ── ADMIN ─────────────────────────────────────────────────────────────────────
 def admin_main_menu()->InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [_b("📊 Stats","adm:stats"),  _b("👥 Users","adm:users")],
-        [_b("💰 Revenue","adm:revenue"),_b("🔄 Transactions","adm:txs")],
-        [_b("📢 Broadcast","adm:broadcast"),_b("🖥 System","adm:system")],
-        [_b("🚨 Alerts","adm:alerts"),_b("🔍 Debug","adm:debug")],
+        [_b("📊 Dashboard","adm:dashboard")],
+        [_b("👥 Users","adm:users"), _b("💰 Revenue","adm:revenue")],
+        [_b("📢 Broadcast","adm:broadcast"), _b("🖥 System","adm:system")],
+        [_b("🚨 Alerts","adm:alerts"), _b("🔍 Debug","adm:debug")],
     ])
 
 def admin_user_actions(user_id,is_banned)->InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [_b("✅ Unban" if is_banned else "🚫 Ban",
-            f"adm:unban:{user_id}" if is_banned else f"adm:ban:{user_id}"),
-         _b("🎁 Grant Plan",f"adm:grant:{user_id}")],
-        [_b("📋 View Detail",f"adm:userdetail:{user_id}"),_b("⬅️ Back","adm:users")],
+            f"adm:unban:{user_id}" if is_banned else f"adm:ban:{user_id}")],
+        [_b("🎁 Grant Plan",f"adm:grant:{user_id}")],
+        [_b("📩 Send Message",f"adm:msg:{user_id}")],
+        [_b("🗑️ Delete User",f"adm:deluser:{user_id}")],
+        [_b("↩️ Back","adm:users")],
     ])
 
 def admin_grant_plan(user_id)->InlineKeyboardMarkup:
@@ -426,8 +428,9 @@ def admin_grant_plan(user_id)->InlineKeyboardMarkup:
          _b("⭐ Pro 90d",f"adm:grantplan:{user_id}:pro:90")],
         [_b("💎 Premium 30d",f"adm:grantplan:{user_id}:premium:30"),
          _b("💎 Premium 90d",f"adm:grantplan:{user_id}:premium:90")],
-        [_b("🆓 Free",f"adm:grantplan:{user_id}:free:0"),
-         _b("❌ Cancel",f"adm:userdetail:{user_id}")],
+        [_b("🆓 Free",f"adm:grantplan:{user_id}:free:0")],
+        [_b("✏️ Custom Plan",f"adm:grantcustom:{user_id}")],
+        [_b("❌ Cancel",f"adm:userdetail:{user_id}")],
     ])
 
 def admin_broadcast_targets()->InlineKeyboardMarkup:
@@ -473,3 +476,47 @@ def settings_keyboard(lang,**kw)->InlineKeyboardMarkup:
                          email_digest=kw.get("email_digest",False),
                          footer_enabled=kw.get("footer_enabled",True),
                          channel_set=kw.get("channel_set",False))
+
+def admin_dashboard_menu()->InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [_b("⬅️ Back", "adm:menu")]
+    ])
+
+def admin_users_menu()->InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [_b("🔍 Search User", "adm:usersearch")],
+        [_b("📊 User Stats", "adm:users:stats"), _b("📋 Recent Users", "adm:users:recent")],
+        [_b("🚫 Banned Users", "adm:users:banned"), _b("📋 Pending Verifications", "adm:users:pending")],
+        [_b("⬅️ Back", "adm:menu")]
+    ])
+
+def admin_revenue_menu()->InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [_b("📊 Total Revenue", "adm:rev:total"), _b("📈 This Month", "adm:rev:month")],
+        [_b("📅 Today", "adm:rev:today"), _b("💳 Recent Transactions", "adm:txs")],
+        [_b("⭐ Pro Subscriptions", "adm:rev:pro"), _b("💎 Premium Subscriptions", "adm:rev:premium")],
+        [_b("🔄 Renewals", "adm:rev:renewals")],
+        [_b("📊 Revenue Chart", "adm:rev:chart:revenue"), _b("📊 Plan Breakdown", "adm:rev:chart:plan")],
+        [_b("⬅️ Back", "adm:menu")]
+    ])
+
+def admin_system_menu()->InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [_b("📋 System Logs", "adm:sys:logs")],
+        [_b("⬅️ Back", "adm:menu")]
+    ])
+
+def admin_alerts_menu()->InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [_b("🗑️ Clear All Logs", "adm:alerts:clear")],
+        [_b("📤 Export Error Logs", "adm:alerts:export")],
+        [_b("⬅️ Back", "adm:menu")]
+    ])
+
+def admin_debug_menu()->InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [_b("🧪 Test Features", "adm:debug:test"), _b("📊 Performance", "adm:debug:perf")],
+        [_b("🔍 SQL Query Runner", "adm:debug:sql"), _b("🔄 Force Sync", "adm:debug:sync")],
+        [_b("📋 Export Debug Logs", "adm:debug:export"), _b("📧 Send Debug Report", "adm:debug:report")],
+        [_b("⬅️ Back", "adm:menu")]
+    ])
