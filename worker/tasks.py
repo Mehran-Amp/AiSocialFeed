@@ -446,6 +446,108 @@ def send_due_digests() -> dict:
     return _run(_send())
 
 
+async def _handle_expiry_warning(user, days_left, now, cfg):
+    from bot.database import get_session
+    from sqlalchemy import update
+    from bot.models import User
+    from bot.utils.telegram_utils import safe_send_message
+    from bot.utils.translator import t
+
+    for warn_days in cfg.rate_limit.expiry_warn_days:
+        if days_left == warn_days:
+            last_warn = user.last_expiry_warning_at
+            if not last_warn or (now - last_warn).days >= 1:
+                await safe_send_message(
+                    user.telegram_id,
+                    t("subscription.expiry_warning", user.language, days=days_left),
+                    parse_mode="HTML",
+                )
+                async with get_session() as s:
+                    await s.execute(
+                        update(User)
+                        .where(User.id == user.id)
+                        .values(last_expiry_warning_at=now)
+                    )
+                    await s.commit()
+                return 1
+    return 0
+
+
+async def _handle_expired_subscription(user, now):
+    from bot.database import get_session
+    from sqlalchemy import update, select
+    from bot.models import User, PlanType, Account, PlanConfig
+    from bot.services.plan_service import apply_grace_period
+    from bot.utils.telegram_utils import safe_send_message
+    from bot.utils.translator import t
+
+    grace_active = (
+        user.grace_until
+        and user.grace_until > now
+        and user.original_plan_before_grace
+    )
+    grace_expired = (
+        user.grace_until
+        and user.grace_until <= now
+    )
+
+    if not user.grace_until and not grace_expired:
+        # First time we detect expiry — start grace period
+        await apply_grace_period(user.id)
+        await safe_send_message(
+            user.telegram_id,
+            t("subscription.grace_started", user.language),
+            parse_mode="HTML",
+        )
+        return 0
+
+    if grace_active:
+        return 0  # still within 48h grace — do nothing
+
+    # Grace expired or no grace left — hard downgrade to free
+    async with get_session() as s:
+        # Downgrade user to free plan
+        await s.execute(
+            update(User)
+            .where(User.id == user.id)
+            .values(plan=PlanType.FREE, subscription_expires_at=None)
+        )
+
+        # We need the user's updated referral_bonus_accounts, but user object
+        # still holds its old data. We can reuse user.referral_bonus_accounts.
+        # Determine free plan limit
+        free_cfg = (await s.execute(
+            select(PlanConfig).where(PlanConfig.plan == PlanType.FREE)
+        )).scalar_one_or_none()
+        free_limit = (free_cfg.max_accounts if free_cfg else 5) + user.referral_bonus_accounts
+
+        # Get all active accounts
+        all_accounts = (await s.execute(
+            select(Account)
+            .where(Account.user_id == user.id, Account.is_active == True)
+            .order_by(Account.created_at.desc())
+        )).scalars().all()
+
+        # Disable accounts beyond free limit
+        if len(all_accounts) > free_limit:
+            accounts_to_disable = [acc.id for acc in all_accounts[free_limit:]]
+            if accounts_to_disable:
+                await s.execute(
+                    update(Account)
+                    .where(Account.id.in_(accounts_to_disable))
+                    .values(is_active=False)
+                )
+
+        await s.commit()
+
+    await safe_send_message(
+        user.telegram_id,
+        t("subscription.expired", user.language),
+        parse_mode="HTML",
+    )
+    return 1
+
+
 # ─────────────────────────────────────────────
 #  Task: Check Subscriptions
 # ─────────────────────────────────────────────
@@ -458,8 +560,6 @@ def check_subscriptions() -> dict:
         from bot.database import init_db, get_session
         from sqlalchemy import select
         from bot.models import User, PlanType
-        from bot.utils.telegram_utils import safe_send_message
-        from bot.utils.translator import t
         from config import config as cfg
 
         await init_db()  # INC-4 fix: was the only task missing this call
@@ -481,86 +581,11 @@ def check_subscriptions() -> dict:
             days_left = int((user.subscription_expires_at - now).total_seconds() / 86400)
 
             # Expiry warnings
-            for warn_days in cfg.rate_limit.expiry_warn_days:
-                if days_left == warn_days:
-                    last_warn = user.last_expiry_warning_at
-                    if not last_warn or (now - last_warn).days >= 1:
-                        await safe_send_message(
-                            user.telegram_id,
-                            t("subscription.expiry_warning",
-                              user.language, days=days_left),
-                            parse_mode="HTML",
-                        )
-                        async with get_session() as s:
-                            from sqlalchemy import select as sel
-                            from bot.models import User as U
-                            u = (await s.execute(
-                                sel(U).where(U.id == user.id)
-                            )).scalar_one()
-                            u.last_expiry_warning_at = now
-                        warned += 1
+            warned += await _handle_expiry_warning(user, days_left, now, cfg)
 
             # Expired — apply 48h grace period first, then hard downgrade
             if days_left < 0:
-                # INC-2 fix: apply_grace_period() was defined but never called.
-                # Give the user a 48-hour window before wiping their plan.
-                # If they are already in grace, or grace has expired, downgrade.
-                grace_active = (
-                    user.grace_until
-                    and user.grace_until > now
-                    and user.original_plan_before_grace
-                )
-                grace_expired = (
-                    user.grace_until
-                    and user.grace_until <= now
-                )
-
-                if not user.grace_until and not grace_expired:
-                    # First time we detect expiry — start grace period
-                    from bot.services.plan_service import apply_grace_period
-                    await apply_grace_period(user.id)
-                    await safe_send_message(
-                        user.telegram_id,
-                        t("subscription.grace_started", user.language),
-                        parse_mode="HTML",
-                    )
-                    continue  # check again next cycle
-
-                if grace_active:
-                    continue  # still within 48h grace — do nothing
-
-                # Grace expired or no grace left — hard downgrade to free
-                async with get_session() as s:
-                    from sqlalchemy import select as sel
-                    from bot.models import User as U, Account
-                    u = (await s.execute(
-                        sel(U).where(U.id == user.id)
-                    )).scalar_one()
-                    u.plan = PlanType.FREE
-                    u.subscription_expires_at = None
-
-                    # Disable accounts beyond free limit (5 + referral bonus)
-                    from bot.models import PlanConfig
-                    free_cfg = (await s.execute(
-                        sel(PlanConfig).where(PlanConfig.plan == PlanType.FREE)
-                    )).scalar_one_or_none()
-                    free_limit = (free_cfg.max_accounts if free_cfg else 5) + u.referral_bonus_accounts
-
-                    all_accounts = (await s.execute(
-                        sel(Account)
-                        .where(Account.user_id == user.id, Account.is_active == True)
-                        .order_by(Account.created_at.desc())
-                    )).scalars().all()
-
-                    for acc in all_accounts[free_limit:]:
-                        acc.is_active = False
-
-                await safe_send_message(
-                    user.telegram_id,
-                    t("subscription.expired", user.language),
-                    parse_mode="HTML",
-                )
-                expired += 1
+                expired += await _handle_expired_subscription(user, now)
 
         return {"warned": warned, "expired": expired}
 
