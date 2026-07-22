@@ -142,6 +142,11 @@ def _run(coro):
     try:
         return loop.run_until_complete(coro)
     finally:
+        from bot.database import close_db
+        try:
+            loop.run_until_complete(close_db())
+        except Exception as e:
+            logger.warning(f"Error closing DB in _run: {e}")
         loop.close()
 
 
