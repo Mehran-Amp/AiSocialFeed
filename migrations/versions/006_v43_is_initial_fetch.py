@@ -13,7 +13,7 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    op.add_column("accounts", sa.Column("is_initial_fetch", sa.Boolean(), nullable=False, server_default=sa.text("1")))
+    op.add_column("accounts", sa.Column("is_initial_fetch", sa.Boolean(), nullable=False, server_default=sa.text("true")))
 
 def downgrade():
     op.drop_column("accounts", "is_initial_fetch")

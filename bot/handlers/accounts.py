@@ -325,6 +325,8 @@ async def receive_link(update:Update,context:ContextTypes.DEFAULT_TYPE)->int:
                         feed_url=resolved.get("feed_url"),next_fetch_at=datetime.now(timezone.utc),
                         is_initial_fetch=True)
         s.add(account)
+        await s.commit()
+
     new_count=await _count_accounts(user.id)
     await safe_send_message(update.effective_user.id,
         "✅ <b>"+("اکانت اضافه شد!" if f else "Account added!")+"</b>\n"+f"<b>{account.display_name}</b>",
