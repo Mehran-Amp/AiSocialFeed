@@ -322,7 +322,8 @@ async def receive_link(update:Update,context:ContextTypes.DEFAULT_TYPE)->int:
         account=Account(user_id=user.id,category_id=default_cat.id if default_cat else None,
                         platform=platform,identifier=resolved["identifier"],
                         display_name=resolved.get("name",resolved["identifier"]),
-                        feed_url=resolved.get("feed_url"),next_fetch_at=datetime.now(timezone.utc))
+                        feed_url=resolved.get("feed_url"),next_fetch_at=datetime.now(timezone.utc),
+                        is_initial_fetch=True)
         s.add(account)
     new_count=await _count_accounts(user.id)
     await safe_send_message(update.effective_user.id,

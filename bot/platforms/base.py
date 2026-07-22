@@ -212,13 +212,28 @@ class BasePlatformFetcher(ABC):
         # Deduplicate
         new_posts = await self._filter_seen(account.id, result.posts)
 
+        is_initial = getattr(account, "is_initial_fetch", False)
+
         if not new_posts:
+            if is_initial:
+                await self._clear_initial_fetch(account.id)
             await self._reset_errors(account)
             return 0
 
         # Deliver posts
         delivered = 0
-        for post in new_posts:
+
+        # Ensure we always get the 5 most recent if initial fetch. The posts are likely newest first.
+        # But we don't want to rely solely on the order, though in practice it is newest first.
+        # new_posts is already sorted newest first by fetchers.
+        posts_to_deliver = new_posts[:5] if is_initial else new_posts
+        posts_to_silently_mark = new_posts[5:] if is_initial else []
+
+        # Mark silent posts as sent without delivery
+        for post in posts_to_silently_mark:
+            await self._mark_sent(account.id, post)
+
+        for post in posts_to_deliver:
             try:
                 await self._deliver_post(user, account, post)
                 await self._mark_sent(account.id, post)
@@ -231,7 +246,23 @@ class BasePlatformFetcher(ABC):
         # Update account health
         await self._update_fetch_success(account)
 
+        if is_initial:
+            await self._clear_initial_fetch(account.id)
+
         return delivered
+
+    async def _clear_initial_fetch(self, account_id: int) -> None:
+        from bot.database import get_session
+        from sqlalchemy import update
+        from bot.models import Account as AccModel
+
+        async with get_session() as session:
+            await session.execute(
+                update(AccModel)
+                .where(AccModel.id == account_id)
+                .values(is_initial_fetch=False)
+            )
+            await session.commit()
 
     # ── Deduplication ────────────────────────
 
@@ -270,6 +301,7 @@ class BasePlatformFetcher(ABC):
                 published_at=post.published_at,
             )
             session.add(entry)
+            await session.commit()
 
     # ── Post Delivery ─────────────────────────
 
@@ -536,6 +568,7 @@ class BasePlatformFetcher(ABC):
             )).scalar_one_or_none()
             if acc:
                 acc.consecutive_errors = 0
+                await session.commit()
 
     async def _update_fetch_success(self, account: Account) -> None:
         from bot.database import get_session
@@ -549,6 +582,7 @@ class BasePlatformFetcher(ABC):
             if acc:
                 acc.last_successful_fetch = datetime.now(timezone.utc)
                 acc.consecutive_errors = 0
+                await session.commit()
 
     async def _notify_account_issue(
         self,

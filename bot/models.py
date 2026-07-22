@@ -329,6 +329,7 @@ class Account(Base, TimestampMixin):
     custom_interval_minutes = Column(Integer, nullable=True)  # NULL = use global default
     next_fetch_at = Column(DateTime(timezone=True), nullable=True)
     last_successful_fetch = Column(DateTime(timezone=True), nullable=True)
+    is_initial_fetch = Column(Boolean, default=True, nullable=False)
 
     # Health tracking
     error_count = Column(Integer, default=0)
