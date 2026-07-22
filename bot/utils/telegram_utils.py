@@ -30,9 +30,14 @@ def set_bot(bot: Bot) -> None:
     _bot = bot
 
 
-def get_bot() -> Bot:
+def _validate_bot_initialized() -> None:
+    """Ensure the bot is initialized before usage."""
     if _bot is None:
         raise RuntimeError("Bot not initialized. Call set_bot() first.")
+
+
+def get_bot() -> Bot:
+    _validate_bot_initialized()
     return _bot
 
 
