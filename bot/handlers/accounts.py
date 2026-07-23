@@ -326,13 +326,16 @@ async def receive_link(update:Update,context:ContextTypes.DEFAULT_TYPE)->int:
                         is_initial_fetch=True)
         s.add(account)
         await s.commit()
+        await s.refresh(account)
+        account_id = account.id
+        account_display_name = account.display_name
 
     new_count=await _count_accounts(user.id)
     await safe_send_message(update.effective_user.id,
-        "✅ <b>"+("اکانت اضافه شد!" if f else "Account added!")+"</b>\n"+f"<b>{account.display_name}</b>",
+        "✅ <b>"+("اکانت اضافه شد!" if f else "Account added!")+"</b>\n"+f"<b>{account_display_name}</b>",
         parse_mode=ParseMode.HTML,reply_markup=main_menu(lang,_plan_str(user),_is_admin(context),new_count))
     try:
-        from worker.tasks import fetch_account_task; fetch_account_task.delay(account.id)
+        from worker.tasks import fetch_account_task; fetch_account_task.delay(account_id)
     except Exception as e: logger.warning(f"Queue failed: {e}")
     context.user_data.pop("adding_platform",None); context.user_data.pop("adding_raw",None)
     return ConversationHandler.END
