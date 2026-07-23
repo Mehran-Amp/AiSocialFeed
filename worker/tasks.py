@@ -19,9 +19,18 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
     from bot.database import init_db
     try:
         asyncio.run(init_db())
+
+        # Initialize Telegram bot for workers
+        from config.settings import config as cfg
+        from bot.utils.telegram_utils import set_bot
+        from telegram import Bot
+        from bot.utils.translator import load_translations
+
+        set_bot(Bot(token=cfg.telegram.token))
+        load_translations()
+
         # v3.2: write heartbeat key so health_check and digest can confirm worker is alive
         import redis as redis_lib
-        from config.settings import config as cfg
         r = redis_lib.from_url(cfg.redis.url, decode_responses=True)
         import socket
         hb_key = f"celery:worker:heartbeat:{socket.gethostname()}"
