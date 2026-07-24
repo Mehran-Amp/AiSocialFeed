@@ -16,9 +16,13 @@ from celery.signals import worker_process_init
 @worker_process_init.connect
 def _setup_db_on_worker_start(sender=None, **kwargs):
     """Run init_db() once per worker process, not per task."""
-    from bot.database import init_db
+    from bot.database import init_db, close_db
     try:
-        asyncio.run(init_db())
+        async def _init_and_dispose():
+            await init_db()
+            await close_db()
+
+        asyncio.run(_init_and_dispose())
         # v3.2: write heartbeat key so health_check and digest can confirm worker is alive
         import redis as redis_lib
         from config.settings import config as cfg
