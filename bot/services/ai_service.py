@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import traceback
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -220,4 +221,66 @@ async def detect_language(text: str) -> Optional[str]:
         return result.get("lang")
     except Exception as e:
         logger.debug(f"Language detection failed: {e}")
+        return None
+
+
+class AIService:
+    @staticmethod
+    async def health_check() -> bool:
+        """Simple ping to check AI service status."""
+        if not config.deepseek.is_configured:
+            return False
+        try:
+            client = _get_client()
+            resp = await client.chat.completions.create(
+                model=config.deepseek.model_fast,
+                messages=[{"role": "user", "content": "ping"}],
+                max_tokens=5,
+            )
+            return True
+        except Exception:
+            return False
+
+    @staticmethod
+    async def answer_question(text: str, lang: str = "en") -> str:
+        """Answers a user question directly."""
+        if not config.deepseek.is_configured:
+            return "Sorry, AI is not configured right now."
+
+        system_prompt = "You are a helpful assistant."
+        if lang == "fa":
+            system_prompt += " Answer in Persian/Farsi."
+
+        try:
+            client = _get_client()
+            resp = await client.chat.completions.create(
+                model=config.deepseek.model_fast,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text},
+                ],
+                max_tokens=1000,
+                temperature=0.7,
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"AI answer_question error: {e}")
+            raise
+
+    @staticmethod
+    async def extract_audio_link(original_url: str) -> Optional[dict]:
+        """Extract audio link using video_extractor."""
+        try:
+            from bot.services.video_extractor import extract_video_info
+            info = await extract_video_info(original_url)
+
+            if info and info.qualities:
+                # Pick the best quality that has audio
+                qualities_with_audio = [q for q in info.qualities if q.has_audio]
+                if qualities_with_audio:
+                    best = max(qualities_with_audio, key=lambda q: q.height)
+                    return {"url": best.url, "title": info.title, "duration": info.duration_seconds, "filesize_mb": best.filesize_mb, "ext": best.ext}
+        except Exception as e:
+            logger.error(f"Audio extraction failed: {e}")
+
         return None

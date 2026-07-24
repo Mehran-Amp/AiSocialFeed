@@ -279,8 +279,7 @@ async def _handle_waiting_for(update, context, user, waiting_for, text) -> bool:
             return True
         try:
             from bot.services.ai_service import AIService
-            svc = AIService()
-            answer = await svc.answer_question(text, lang=lang)
+            answer = await AIService.answer_question(text, lang=lang)
         except Exception:
             answer = ("متأسفم، در حال حاضر نمی‌توانم پاسخ دهم." if fa
                       else "Sorry, I couldn't process that right now.")
