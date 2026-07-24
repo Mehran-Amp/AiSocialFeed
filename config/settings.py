@@ -70,8 +70,8 @@ class RedisConfig:
 @dataclass
 class DeepSeekConfig:
     api_key: Optional[str] = field(default_factory=lambda: os.getenv("DEEPSEEK_API_KEY"))
-    model_fast: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL_FAST", "deepseek-chat"))
-    model_pro: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL_PRO", "deepseek-chat"))
+    model_fast: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL_FAST", "deepseek-v4-flash"))
+    model_pro: str = field(default_factory=lambda: os.getenv("DEEPSEEK_MODEL_PRO", "deepseek-v4-flash"))
     base_url: str = "https://api.deepseek.com"
     timeout: int = 30
     max_retries: int = 3
