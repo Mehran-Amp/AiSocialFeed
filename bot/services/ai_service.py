@@ -253,15 +253,28 @@ class AIService:
 
         try:
             client = _get_client()
-            resp = await client.chat.completions.create(
-                model=config.deepseek.model_fast,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=1000,
-                temperature=0.7,
-            )
+            try:
+                resp = await client.chat.completions.create(
+                    model=config.deepseek.model_fast,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": text},
+                    ],
+                    max_tokens=1000,
+                    temperature=0.7,
+                )
+            except Exception as inner_e:
+                # If model_fast fails (e.g. 400 invalid model), try the legacy model
+                logger.warning(f"Primary DeepSeek model failed: {inner_e}. Falling back to deepseek-chat.")
+                resp = await client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": text},
+                    ],
+                    max_tokens=1000,
+                    temperature=0.7,
+                )
             return resp.choices[0].message.content.strip()
         except Exception as e:
             logger.error(f"AI answer_question error: {e}")
