@@ -146,7 +146,20 @@ async def receive_ai_question(update: Update, context: ContextTypes.DEFAULT_TYPE
         return ConversationHandler.END
 
     lang = user.language
+    fa = lang == "fa"
     question = update.message.text.strip()
+
+    # Let user exit via Home/Back physical buttons
+    if question.startswith("🏠") or question.startswith("↩️"):
+        return ConversationHandler.END
+
+    from bot.services.ai_service import check_daily_limit, increment_daily_usage
+    has_limit = await check_daily_limit(user.id)
+    if not has_limit:
+        msg = "شما به محدودیت ۱۲ درخواست هوش مصنوعی در روز رسیده‌اید." if fa else "You have reached your daily limit of 12 AI requests."
+        from bot.utils.keyboards import home_button
+        await safe_send_message(update.effective_user.id, msg, reply_markup=home_button(lang))
+        return ConversationHandler.END
 
     thinking_msg = await safe_send_message(
         update.effective_user.id,
@@ -156,6 +169,7 @@ async def receive_ai_question(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         from bot.services.ai_service import AIService
         answer = await AIService.answer_question(question, lang=lang)
+        await increment_daily_usage(user.id)
     except Exception as e:
         logger.error(f"AI Q&A failed: {e}")
         answer = None
@@ -167,14 +181,14 @@ async def receive_ai_question(update: Update, context: ContextTypes.DEFAULT_TYPE
             pass
 
     if not answer:
-        answer = t("errors.ai_unavailable", lang)
+        answer = ("متأسفم، در حال حاضر نمی‌توانم پاسخ دهم." if fa else "Sorry, I couldn't process that right now.")
 
-    # Show answer with option to open ticket
+    limit_info = "\n\n💡 شما میتونید روزانه ۱۲ سوال بپرسید." if fa else "\n\n💡 You can ask 12 questions per day."
+
+    # Show answer with option to open ticket OR go home
+    from bot.utils.keyboards import _b
     buttons = [
-        [InlineKeyboardButton(
-            "✅ Got it",
-            callback_data="support:menu"
-        )],
+        [_b("🏠 " + ("منوی اصلی" if fa else "Home"), "menu:main")],
         [InlineKeyboardButton(
             "📝 Still need help — open ticket",
             callback_data="support:open_ticket"
@@ -183,11 +197,12 @@ async def receive_ai_question(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await safe_send_message(
         update.effective_user.id,
-        f"🤖 <b>AI Answer:</b>\n\n{answer}",
+        f"🤖 <b>AI Answer:</b>\n\n{answer}{limit_info}",
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(buttons),
     )
-    return ConversationHandler.END
+    # Loop back to waiting for next question
+    return WAITING_AI_QUESTION
 
 
 # ─────────────────────────────────────────────
