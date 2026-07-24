@@ -301,6 +301,9 @@ async def _handle_waiting_for(update, context, user, waiting_for, text) -> bool:
             answer = ("متأسفم، در حال حاضر نمی‌توانم پاسخ دهم." if fa else "Sorry, I couldn't process that right now.")
 
         limit_info = "\n\n💡 شما میتونید روزانه ۱۲ سوال بپرسید." if fa else "\n\n💡 You can ask 12 questions per day."
+
+        # Use home_button to terminate AI chat
+        from bot.utils.keyboards import home_button
         await update.message.reply_text(f"🤖 {answer}{limit_info}", reply_markup=home_button(lang))
 
         # Keep waiting_for state so user can continue chatting
