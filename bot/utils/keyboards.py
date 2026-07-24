@@ -295,10 +295,16 @@ def ai_features_menu(lang,summarize,translate,categorize,spam_tag,translate_lang
     f=lang=="fa"
     return InlineKeyboardMarkup([
         [_b(("✅" if summarize else "⬜️")+" "+("خلاصه‌سازی" if f else "AI Summarize"),"ai:toggle:summarize")],
-        [_b(("✅" if translate else "⬜️")+" "+("ترجمه" if f else "AI Translate")+f" → {translate_lang} [⚙️]","ai:translate:settings")],
+        [
+            _b(("✅" if translate else "⬜️")+" "+("ترجمه" if f else "AI Translate")+f" → {translate_lang}","ai:toggle:translate"),
+            _b("⚙️","ai:translate:settings")
+        ],
         [_b(("✅" if categorize else "⬜️")+" "+("دسته‌بندی" if f else "AI Categorize"),"ai:toggle:categorize")],
         [_b(("✅" if spam_tag else "⬜️")+" "+("تشخیص اسپم" if f else "AI Spam Tagging"),"ai:toggle:spam_tag")],
-        [_b("⚡️ "+("فعال‌سازی همه" if f else "Enable All"),"ai:enable_all")],
+        [
+            _b("⚡️ "+("فعال‌سازی همه" if f else "Enable All"),"ai:enable_all"),
+            _b("🛑 "+("غیرفعال‌سازی همه" if f else "Disable All"),"ai:disable_all")
+        ],
         [_b("↩️ "+("بازگشت" if f else "Back"),"profile:settings")],
     ])
 

@@ -279,21 +279,36 @@ async def cb_ai(update, context):
                 from sqlalchemy import select
                 from bot.models import User as U
                 db=(await s.execute(select(U).where(U.id==user.id))).scalar_one_or_none()
-                if db: setattr(db,col,not getattr(db,col)); setattr(user,col,getattr(db,col))
+                if db:
+                setattr(db,col,not getattr(db,col)); setattr(user,col,getattr(db,col))
+                await s.commit()
         await query.edit_message_reply_markup(reply_markup=ai_features_menu(
             lang,user.ai_summarize,user.ai_translate,user.ai_categorize,user.ai_spam_tag,
             translate_lang=user.ai_translate_lang or "fa"))
 
     elif action=="enable_all":
+        from sqlalchemy import select
+        from bot.models import User as U
         async with get_session() as s:
-            from sqlalchemy import select
-            from bot.models import User as U
             db=(await s.execute(select(U).where(U.id==user.id))).scalar_one_or_none()
             if db:
                 db.ai_summarize=db.ai_translate=db.ai_categorize=db.ai_spam_tag=True
                 user.ai_summarize=user.ai_translate=user.ai_categorize=user.ai_spam_tag=True
+                await s.commit()
         await query.edit_message_reply_markup(reply_markup=ai_features_menu(
             lang,True,True,True,True,translate_lang=user.ai_translate_lang or "fa"))
+
+    elif action=="disable_all":
+        from sqlalchemy import select
+        from bot.models import User as U
+        async with get_session() as s:
+            db=(await s.execute(select(U).where(U.id==user.id))).scalar_one_or_none()
+            if db:
+                db.ai_summarize=db.ai_translate=db.ai_categorize=db.ai_spam_tag=False
+                user.ai_summarize=user.ai_translate=user.ai_categorize=user.ai_spam_tag=False
+                await s.commit()
+        await query.edit_message_reply_markup(reply_markup=ai_features_menu(
+            lang,False,False,False,False,translate_lang=user.ai_translate_lang or "fa"))
 
     elif action=="translate":
         if len(parts)>2 and parts[2]=="settings":
