@@ -402,7 +402,7 @@ class TelegramChannelFetcher(BasePlatformFetcher):
     def _parse_tme(self, html: str, username: str) -> list:
         posts = []
         blocks = re.findall(
-            r'<div class="tgme_widget_message_wrap[^"]*"[^>]*>(.*?)</div>\s*</div>\s*</div>',
+            r'(<div class="tgme_widget_message_wrap[^"]*"[^>]*>.*?</div>\s*</div>\s*</div>)',
             html, re.DOTALL,
         )
         for block in reversed(blocks[-10:]):
