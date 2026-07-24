@@ -454,11 +454,12 @@ class BasePlatformFetcher(ABC):
         # Main content
         import html
         safe_title = html.escape(post.title) if post.title else ""
+        safe_account_name = html.escape(account.display_name) if account.display_name else ""
 
         lines = [
             f"<b>{platform_label}</b>",
             category_line,
-            f"📌 {account.display_name}",
+            f"📌 {safe_account_name}",
         ]
         if date_str:
             lines.append(f"🕐 {date_str}")
@@ -477,21 +478,21 @@ class BasePlatformFetcher(ABC):
         # AI summary
         summary = ai_result.get("summary")
         if summary:
-            lines.append(f"\n{t('post.ai_summary_label', lang)}\n{summary}")
+            lines.append(f"\n{t('post.ai_summary_label', lang)}\n{html.escape(summary)}")
 
         # AI translation
         translation = ai_result.get("translation")
         if translation:
             sep = "─" * 16
             if user.ai_show_original:
-                lines.append(f"\n{sep}\n{t('post.ai_translation_label', lang)}\n{translation}")
+                lines.append(f"\n{sep}\n{t('post.ai_translation_label', lang)}\n{html.escape(translation)}")
             else:
                 # Replace content with translation
-                lines = [f"<b>{platform_label}</b>", f"📌 {account.display_name}"]
+                lines = [f"<b>{platform_label}</b>", f"📌 {safe_account_name}"]
                 if date_str:
                     lines.append(f"🕐 {date_str}")
                 lines.append("")
-                lines.append(translation)
+                lines.append(html.escape(translation))
 
         lines.append(spam_line)
         lines.append(ai_cat_line)
