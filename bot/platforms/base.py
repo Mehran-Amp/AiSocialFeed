@@ -452,6 +452,9 @@ class BasePlatformFetcher(ABC):
             ai_cat_line = f"\n🏷 {ai_cat.capitalize()}"
 
         # Main content
+        import html
+        safe_title = html.escape(post.title) if post.title else ""
+
         lines = [
             f"<b>{platform_label}</b>",
             category_line,
@@ -460,14 +463,16 @@ class BasePlatformFetcher(ABC):
         if date_str:
             lines.append(f"🕐 {date_str}")
         lines.append("")
-        lines.append(f"<b>{post.title}</b>")
+        lines.append(f"<b>{safe_title}</b>")
 
         # Description (truncated)
         if post.description and len(post.description) > 50:
             desc = post.description[:400]
             if len(post.description) > 400:
                 desc += "..."
-            lines.append(desc)
+            lines.append(html.escape(desc))
+        elif post.description:
+            lines.append(html.escape(post.description))
 
         # AI summary
         summary = ai_result.get("summary")
