@@ -272,20 +272,34 @@ async def _handle_waiting_for(update, context, user, waiting_for, text) -> bool:
         return True
 
     if waiting_for == "ai_chat":
-        from bot.utils.keyboards import back_button
+        from bot.utils.keyboards import home_button
         if user.plan != PlanType.PREMIUM:
             t1 = "این ویژگی فقط برای Premium است." if fa else "This feature is Premium only."
-            await update.message.reply_text(f"🔒 {t1}", reply_markup=back_button(lang, "profile:help"))
+            await update.message.reply_text(f"🔒 {t1}", reply_markup=home_button(lang))
             return True
+
+        # Apply daily limit of 12 for ai_chat
+        from bot.services.ai_service import check_daily_limit, increment_daily_usage
+        has_limit = await check_daily_limit(user.id)
+        if not has_limit:
+            msg = "شما به محدودیت ۱۲ درخواست هوش مصنوعی در روز رسیده‌اید." if fa else "You have reached your daily limit of 12 AI requests."
+            await update.message.reply_text(msg, reply_markup=home_button(lang))
+            return True
+
         try:
             from bot.services.ai_service import AIService
             answer = await AIService.answer_question(text, lang=lang)
-        except Exception:
-            answer = ("متأسفم، در حال حاضر نمی‌توانم پاسخ دهم." if fa
-                      else "Sorry, I couldn't process that right now.")
-        await update.message.reply_text(f"🤖 {answer}", reply_markup=back_button(lang, "profile:help"))
-        return True
+            await increment_daily_usage(user.id)
+        except Exception as e:
+            import logging; logging.error(f'Error in answer_question: {e}', exc_info=True)
+            answer = ("متأسفم، در حال حاضر نمی‌توانم پاسخ دهم." if fa else "Sorry, I couldn't process that right now.")
 
+        limit_info = "\n\n💡 شما میتونید روزانه ۱۲ سوال بپرسید." if fa else "\n\n💡 You can ask 12 questions per day."
+        await update.message.reply_text(f"🤖 {answer}{limit_info}", reply_markup=home_button(lang))
+
+        # Keep waiting_for state so user can continue chatting
+        context.user_data["waiting_for"] = "ai_chat"
+        return True
     if waiting_for == "email_for_digest":
         import re as _re
         from bot.database import get_session

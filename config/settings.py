@@ -75,7 +75,7 @@ class DeepSeekConfig:
     base_url: str = "https://api.deepseek.com"
     timeout: int = 30
     max_retries: int = 3
-    daily_limit_per_user: int = 500
+    daily_limit_per_user: int = 12
     max_tokens_summary: int = 500
     max_tokens_translate: int = 1000
     max_tokens_qa: int = 800
