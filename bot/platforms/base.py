@@ -362,6 +362,7 @@ class BasePlatformFetcher(ABC):
         bot = get_bot()
 
         try:
+
             if post.image_url and not post.has_video:
                 try:
                     await bot.send_photo(
@@ -389,7 +390,7 @@ class BasePlatformFetcher(ABC):
             else:
                 await bot.send_message(
                     chat_id=target_id,
-                    text=text,
+                    text=text[:4096],
                     parse_mode="HTML",
                     reply_markup=markup,
                     disable_web_page_preview=disable_preview,
@@ -478,11 +479,11 @@ class BasePlatformFetcher(ABC):
         lines.append("")
         lines.append(f"<b>{post.title}</b>")
 
-        # Description (truncated)
-        if post.description and len(post.description) > 50:
-            desc = post.description[:400]
-            if len(post.description) > 400:
-                desc += "..."
+        # Description
+        if post.description and len(post.description) > 0:
+            desc = post.description
+            if len(desc) > 3500:
+                desc = desc[:3500] + "..."
             lines.append(desc)
 
         # AI summary

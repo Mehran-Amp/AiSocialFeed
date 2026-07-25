@@ -114,6 +114,7 @@ async def _trigger_background_fetches(user_id:int) -> None:
 
 # ── 🔄 HYBRID UPDATES ─────────────────────────────────────────────────────────
 async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
+
     from bot.utils.translator import t
 
     # Notify user that background fetches have been triggered

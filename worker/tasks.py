@@ -62,6 +62,7 @@ celery_app.conf.update(
     task_acks_late=True,
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
+    task_default_queue="default",
     task_routes={
         "worker.tasks.fetch_account_task":          {"queue": "platforms"},
         "worker.tasks.send_digest_task":            {"queue": "default"},
@@ -73,6 +74,7 @@ celery_app.conf.update(
         "worker.tasks.check_anomalies_task":        {"queue": "default"},
         "worker.digest.send_developer_digest":      {"queue": "default"},  # v3.2
         "worker.infra.check_webhook_health":        {"queue": "default"},  # v3.2
+        "worker.tasks.schedule_pending_fetches":    {"queue": "default"},
     },
     beat_schedule={
         # Fetch all active accounts every 15 minutes
@@ -218,10 +220,16 @@ def fetch_account_task(self, account_id: int) -> dict:
                 owner = (await session.execute(
                     select(User).where(User.id == account.user_id)
                 )).scalar_one_or_none()
-            if owner and owner.plan == PlanType.PREMIUM and owner.fetch_interval_minutes:
-                interval = owner.fetch_interval_minutes
+            if owner:
+                if owner.plan == PlanType.PREMIUM and owner.fetch_interval_minutes:
+                    interval = owner.fetch_interval_minutes
+                elif owner.plan == PlanType.PRO:
+                    interval = 30
+                else:
+                    interval = 60
             else:
                 interval = cfg.platform.default_fetch_interval
+
         next_run = datetime.now(timezone.utc) + timedelta(minutes=interval)
         async with get_session() as session:
             await session.execute(
@@ -229,6 +237,7 @@ def fetch_account_task(self, account_id: int) -> dict:
                 .where(Account.id == account_id)
                 .values(next_fetch_at=next_run)
             )
+            await session.commit()
 
         fetcher = get_fetcher(account.platform)
         delivered = await fetcher.run(account_id)
@@ -263,7 +272,7 @@ def schedule_pending_fetches() -> dict:
 
     async def _schedule():
         from bot.database import init_db, get_session
-        from sqlalchemy import select
+        from sqlalchemy import select, or_
         from bot.models import Account
 
         await init_db()
@@ -281,7 +290,7 @@ def schedule_pending_fetches() -> dict:
             due_accounts = (await session.execute(
                 select(Account.id).where(
                     Account.is_active == True,
-                    Account.next_fetch_at <= now,
+                    or_(Account.next_fetch_at <= now, Account.next_fetch_at.is_(None)),
                     Account.id > last_id,
                 )
                 .order_by(Account.id)
