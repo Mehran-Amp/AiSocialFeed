@@ -34,11 +34,6 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
         r.set(hb_key, "1", ex=cfg.admin.worker_heartbeat_ttl)
         r.close()
 
-        # Initialize Telegram Bot instance for Celery workers
-        from telegram import Bot
-        from bot.utils.telegram_utils import set_bot
-        bot = Bot(token=cfg.telegram.token)
-        set_bot(bot)
     except Exception as e:
         logger.warning(f"init_db on worker start failed: {e}")
 
@@ -151,6 +146,15 @@ celery_app.conf.update(
 def _run(coro):
     """Run async coroutine in Celery task."""
     loop = asyncio.new_event_loop()
+
+    # Initialize a new Bot instance within this specific task's event loop
+    # to avoid sharing global HTTPX connections across different event loops.
+    from telegram import Bot
+    from bot.utils.telegram_utils import set_bot
+    from config.settings import config as cfg
+    _task_bot = Bot(token=cfg.telegram.token)
+    set_bot(_task_bot)
+
     try:
         return loop.run_until_complete(coro)
     finally:
@@ -159,6 +163,18 @@ def _run(coro):
             loop.run_until_complete(close_db())
         except Exception as e:
             logger.warning(f"Error closing DB in _run: {e}")
+
+        # Clean up the task's bot HTTP connections
+        try:
+            # Cleanly shut down the bot's HTTP request pool
+            if hasattr(_task_bot, 'shutdown'):
+                loop.run_until_complete(_task_bot.shutdown())
+            elif hasattr(_task_bot, 'close'):
+                loop.run_until_complete(_task_bot.close())
+            set_bot(None) # type: ignore
+        except Exception as e:
+            logger.warning(f"Error closing Bot in _run: {e}")
+
         loop.close()
 
 
