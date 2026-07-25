@@ -42,7 +42,7 @@ def main_menu(lang="en",plan="free",is_admin=False,account_count=0)->ReplyKeyboa
     # v4.2.1 issue-11: 2 buttons per row instead of 1
     rows=[
         [KeyboardButton("🔄 "+("بروزرسانی" if f else "Updates")), KeyboardButton(acct_label)],
-        [KeyboardButton("👤 "+("پروفایل" if f else "Profile"))],
+        [KeyboardButton("👤 "+("پروفایل" if f else "Profile")), KeyboardButton("🔖 "+("پست‌های ذخیره شده" if f else "Saved Posts"))],
     ]
     if is_admin: rows.append([KeyboardButton("⚙️ Admin Panel")])
     return ReplyKeyboardMarkup(rows,resize_keyboard=True,is_persistent=False)

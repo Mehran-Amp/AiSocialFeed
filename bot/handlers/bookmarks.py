@@ -110,7 +110,7 @@ async def show_bookmarks(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> None:
-    """Show user's saved bookmarks — /saved command."""
+    """Show user's saved bookmarks grouped by platform — /saved command."""
     user: Optional[User] = context.user_data.get("user")
     if not user:
         return
@@ -118,15 +118,15 @@ async def show_bookmarks(
     lang = user.language
 
     async with get_session() as session:
-        from sqlalchemy import select
-        bookmarks = (await session.execute(
-            select(Bookmark)
+        from sqlalchemy import select, func
+        # Group bookmarks by platform and count them
+        results = (await session.execute(
+            select(Bookmark.platform, func.count(Bookmark.id))
             .where(Bookmark.user_id == user.id)
-            .order_by(Bookmark.created_at.desc())
-            .limit(20)
-        )).scalars().all()
+            .group_by(Bookmark.platform)
+        )).all()
 
-    if not bookmarks:
+    if not results:
         msg = (
             "🔖 <b>ذخیره‌های شما</b>\n\nهنوز چیزی ذخیره نشده.\n"
             "زیر هر پست دکمه 🔖 رو بزن تا ذخیره بشه."
@@ -137,17 +137,79 @@ async def show_bookmarks(
         await safe_send_message(update.effective_user.id, msg, parse_mode=ParseMode.HTML)
         return
 
+    total_bookmarks = sum(count for _, count in results)
+
     # v3.3: unlimited — show count only, no "/limit" fraction
     header = (
-        f"🔖 <b>ذخیره‌های شما</b> ({len(bookmarks)} مورد)\n\n"
+        f"🔖 <b>پلتفرم‌های ذخیره‌شده</b> ({total_bookmarks} مورد)\n\n"
+        "یک پلتفرم را برای مشاهده پست‌های ذخیره‌شده انتخاب کنید:"
     ) if lang == "fa" else (
-        f"🔖 <b>Your Bookmarks</b> ({len(bookmarks)} saved)\n\n"
+        f"🔖 <b>Saved Platforms</b> ({total_bookmarks} total)\n\n"
+        "Select a platform to view your saved posts:"
+    )
+
+    buttons = []
+    for platform, count in results:
+        icon = PLATFORM_ICONS.get(platform.value, "📌")
+        btn_label = f"{icon} {platform.value.capitalize()} ({count})"
+        buttons.append([InlineKeyboardButton(btn_label, callback_data=f"bm:list:{platform.value}")])
+
+    await safe_send_message(
+        update.effective_user.id,
+        header,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+
+async def show_bookmarks_for_platform(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Show user's saved bookmarks for a specific platform."""
+    query = update.callback_query
+    await query.answer()
+
+    user: Optional[User] = context.user_data.get("user")
+    if not user:
+        return
+
+    lang = user.language
+    platform_str = query.data.split(":")[-1]
+
+    try:
+        platform = Platform(platform_str)
+    except ValueError:
+        return
+
+    async with get_session() as session:
+        from sqlalchemy import select
+        bookmarks = (await session.execute(
+            select(Bookmark)
+            .where(
+                Bookmark.user_id == user.id,
+                Bookmark.platform == platform
+            )
+            .order_by(Bookmark.created_at.desc())
+            .limit(20)
+        )).scalars().all()
+
+    if not bookmarks:
+        await query.edit_message_text(
+            "هنوز چیزی ذخیره نشده." if lang == "fa" else "Nothing saved yet."
+        )
+        return
+
+    icon = PLATFORM_ICONS.get(platform.value, "📌")
+    header = (
+        f"{icon} <b>پست‌های ذخیره‌شده - {platform.value.capitalize()}</b>\n\n"
+    ) if lang == "fa" else (
+        f"{icon} <b>Saved Posts - {platform.value.capitalize()}</b>\n\n"
     )
 
     await safe_send_message(update.effective_user.id, header, parse_mode=ParseMode.HTML)
 
     for bm in bookmarks:
-        icon = PLATFORM_ICONS.get(bm.platform.value, "📌")
         date_str = bm.created_at.strftime("%m/%d") if bm.created_at else ""
         title = bm.title or bm.url[:60]
 
@@ -216,5 +278,6 @@ def register(app: Application) -> None:
 
     app.add_handler(CommandHandler("saved", auth_middleware(show_bookmarks)))
     app.add_handler(CallbackQueryHandler(save_bookmark, pattern=r"^bm:save:"))
+    app.add_handler(CallbackQueryHandler(show_bookmarks_for_platform, pattern=r"^bm:list:"))
     app.add_handler(CallbackQueryHandler(delete_bookmark, pattern=r"^bm:del:"))
     logger.info("Bookmark handlers registered.")
