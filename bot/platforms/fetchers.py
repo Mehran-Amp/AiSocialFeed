@@ -84,6 +84,12 @@ def _parse_date(entry) -> Optional[datetime]:
                 pass
     return None
 
+def _entry_video(entry) -> Optional[str]:
+    for enc in getattr(entry, "enclosures", []):
+        if enc.get("type", "").startswith("video/"):
+            return enc.get("url") or enc.get("href")
+    return None
+
 def _entry_image(entry) -> Optional[str]:
     media = getattr(entry, "media_thumbnail", None)
     if media and isinstance(media, list) and media:
@@ -171,14 +177,16 @@ def _parse_entries(feed: feedparser.FeedParserDict) -> list:
             m = re.search(r'<img[^>]+src="([^"]+)"', summary)
             if m:
                 image_url = m.group(1)
+        video_url = _entry_video(entry)
         posts.append(FetchedPost(
             post_id=entry.get("id") or url,
             title=_strip_html(entry.get("title", ""))[:200],
             url=url,
             published_at=_parse_date(entry),
-            description=_strip_html(summary)[:500],
+            description=_strip_html(summary)[:4000],
             image_url=image_url,
-            has_video="video" in summary.lower() or "mp4" in url.lower(),
+            video_url=video_url,
+            has_video=bool(video_url) or "video" in summary.lower() or "mp4" in url.lower(),
             author="",
         ))
     return posts
@@ -239,8 +247,9 @@ class YouTubeFetcher(BasePlatformFetcher):
                 title=entry.get("title", "No title"),
                 url=url,
                 published_at=_parse_date(entry),
-                description=_strip_html(entry.get("summary", ""))[:500],
+                description=_strip_html(entry.get("summary", ""))[:4000],
                 image_url=thumbnail,
+                video_url=None,
                 has_video=True,
                 author=entry.get("author", account.display_name),
             ))
@@ -269,14 +278,16 @@ class RSSFetcher(BasePlatformFetcher):
                 enc.get("type", "").startswith("video/")
                 for enc in getattr(entry, "enclosures", [])
             )
+            video_url = _entry_video(entry)
             posts.append(FetchedPost(
                 post_id=entry.get("id") or post_url,
                 title=entry.get("title", "No title")[:256],
                 url=post_url,
                 published_at=_parse_date(entry),
-                description=_strip_html(summary)[:500],
+                description=_strip_html(summary)[:4000],
                 image_url=_entry_image(entry),
-                has_video=has_video,
+                video_url=video_url,
+                has_video=has_video or bool(video_url),
                 author=entry.get("author", ""),
             ))
         return FetchResult(posts=posts)
@@ -297,8 +308,9 @@ class RedditFetcher(BasePlatformFetcher):
         posts = []
         for entry in feed.entries[:10]:
             entry_url = entry.get("link", "")
-            summary = _strip_html(entry.get("summary", ""))[:400]
-            has_video = "v.redd.it" in entry_url or "v.redd.it" in summary
+            summary = _strip_html(entry.get("summary", ""))[:4000]
+            video_url = _entry_video(entry)
+            has_video = "v.redd.it" in entry_url or "v.redd.it" in summary or bool(video_url)
             posts.append(FetchedPost(
                 post_id=entry.get("id") or entry_url,
                 title=entry.get("title", "")[:256],
@@ -306,6 +318,7 @@ class RedditFetcher(BasePlatformFetcher):
                 published_at=_parse_date(entry),
                 description=summary,
                 image_url=_entry_image(entry),
+                video_url=video_url,
                 has_video=has_video,
                 author=entry.get("author", ""),
             ))
@@ -370,13 +383,16 @@ class LinkedInFetcher(BasePlatformFetcher):
         posts = []
         for entry in feed.entries[:10]:
             entry_url = entry.get("link", "")
+            video_url = _entry_video(entry)
             posts.append(FetchedPost(
                 post_id=entry.get("id") or entry_url,
                 title=_strip_html(entry.get("title", ""))[:256],
                 url=entry_url,
                 published_at=_parse_date(entry),
-                description=_strip_html(entry.get("summary", ""))[:500],
+                description=_strip_html(entry.get("summary", ""))[:4000],
                 image_url=_entry_image(entry),
+                video_url=video_url,
+                has_video=bool(video_url),
             ))
         return FetchResult(posts=posts)
 
@@ -412,10 +428,20 @@ class TelegramChannelFetcher(BasePlatformFetcher):
             text_match = re.search(
                 r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', block, re.DOTALL
             )
-            text = _strip_html(text_match.group(1))[:500] if text_match else ""
+            # Full text without HTML, keep formatting by converting <br> to newlines? Strip_html removes all tags.
+            # _strip_html removes all <...>. Let's keep replacing <br> with newline first.
+            raw_text = text_match.group(1) if text_match else ""
+            raw_text = re.sub(r'<br\s*/?>', '\n', raw_text)
+            text = _strip_html(raw_text)[:4000]
+
             img_match = re.search(r"background-image:url\('([^']+)'\)", block)
             image_url = img_match.group(1) if img_match else None
-            has_video = "tgme_widget_message_video" in block
+
+            # Find video URL if available in the page
+            video_match = re.search(r'<video[^>]+src="([^"]+)"', block)
+            video_url = video_match.group(1) if video_match else None
+
+            has_video = "tgme_widget_message_video" in block or bool(video_url)
             date_match = re.search(r'datetime="([^"]+)"', block)
             pub_date = None
             if date_match:
@@ -432,6 +458,7 @@ class TelegramChannelFetcher(BasePlatformFetcher):
                 published_at=pub_date,
                 description=text,
                 image_url=image_url,
+                video_url=video_url,
                 has_video=has_video,
             ))
         return posts
@@ -500,7 +527,7 @@ class BlueskyFetcher(BasePlatformFetcher):
             rkey = uri.split("/")[-1] if uri else ""
             post_handle = author.get("handle", handle)
             post_url = f"https://bsky.app/profile/{post_handle}/post/{rkey}" if rkey else ""
-            text = record.get("text", "")[:500]
+            text = record.get("text", "")[:4000]
             embed = post.get("embed", {})
             image_url = None
             has_video = False
@@ -528,6 +555,7 @@ class BlueskyFetcher(BasePlatformFetcher):
                 published_at=pub_date,
                 description=text,
                 image_url=image_url,
+                video_url=None,
                 has_video=has_video,
                 author=author.get("displayName") or post_handle,
             ))
@@ -552,16 +580,14 @@ class MastodonFetcher(BasePlatformFetcher):
         for entry in feed.entries[:10]:
             entry_url = entry.get("link", "")
             summary = entry.get("summary", "")
-            clean = _strip_html(summary)[:500]
+            clean = _strip_html(summary)[:4000]
             image_url = _entry_image(entry)
+            video_url = _entry_video(entry)
             if not image_url:
                 m = re.search(r'<img[^>]+src="([^"]+)"', summary)
                 if m:
                     image_url = m.group(1)
-            has_video = "video" in summary.lower() or any(
-                enc.get("type", "").startswith("video/")
-                for enc in getattr(entry, "enclosures", [])
-            )
+            has_video = "video" in summary.lower() or bool(video_url)
             posts.append(FetchedPost(
                 post_id=entry.get("id") or entry_url,
                 title=clean[:100] or "Post",
@@ -569,6 +595,7 @@ class MastodonFetcher(BasePlatformFetcher):
                 published_at=_parse_date(entry),
                 description=clean,
                 image_url=image_url,
+                video_url=video_url,
                 has_video=has_video,
                 author=account.display_name,
             ))
