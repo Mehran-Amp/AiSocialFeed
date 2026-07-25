@@ -22,7 +22,8 @@
     "back_main": "🏠 Main Menu",
     "main_menu": "🏠 Main Menu",
     "update_all": "🔄 Update All",
-    "settings": "⚙️ Settings"
+    "settings": "⚙️ Settings",
+    "fetch_now": "🔄 Fetching latest posts..."
   },
   "account": {
     "select_platform": "Select a platform to add:",

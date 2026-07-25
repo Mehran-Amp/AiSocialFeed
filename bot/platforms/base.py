@@ -372,8 +372,10 @@ class BasePlatformFetcher(ABC):
                         reply_markup=markup,
                     )
                 except Exception as photo_err:
-                    err_lower = str(photo_err).lower()
-                    if "failed to get http url content" in err_lower or "wrong file identifier/http url" in err_lower or "wrong type of the web page content" in err_lower:
+                    from telegram.error import BadRequest
+                    # Any BadRequest from Telegram API for sendPhoto (e.g. invalid url host, wrong type, failed to get content)
+                    # means the image can't be fetched or parsed by Telegram. Fallback to sending text.
+                    if isinstance(photo_err, BadRequest):
                         logger.warning(f"sendPhoto failed ({photo_err}) for post {post.post_id}, falling back to send_message.")
                         await bot.send_message(
                             chat_id=target_id,
