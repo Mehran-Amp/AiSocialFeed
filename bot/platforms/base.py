@@ -362,18 +362,70 @@ class BasePlatformFetcher(ABC):
         bot = get_bot()
 
         try:
-            if post.image_url and not post.has_video:
-                await bot.send_photo(
-                    chat_id=target_id,
-                    photo=post.image_url,
-                    caption=text[:1024],
-                    parse_mode="HTML",
-                    reply_markup=markup,
-                )
+            # If this is a native Telegram post, try to copy it exactly
+            if account.platform.value == "telegram" and post.post_id and post.post_id.isdigit():
+                try:
+                    raw_id = account.identifier.lstrip('@')
+                    # only prepend '@' if it's not a numeric ID
+                    from_chat = raw_id if raw_id.startswith('-') or raw_id.isdigit() else f"@{raw_id}"
+                    await bot.copy_message(
+                        chat_id=target_id,
+                        from_chat_id=from_chat,
+                        message_id=int(post.post_id),
+                        reply_markup=markup
+                    )
+                    return
+                except Exception as ex:
+                    logger.warning(f"Failed to copy native Telegram message {post.post_id}: {ex}")
+                    # Fallback to standard sending below if copy_message fails
+
+            if post.video_url:
+                if len(text) > 1024:
+                    # Send media first, then text
+                    await bot.send_video(
+                        chat_id=target_id,
+                        video=post.video_url,
+                    )
+                    await bot.send_message(
+                        chat_id=target_id,
+                        text=text[:4096],
+                        parse_mode="HTML",
+                        reply_markup=markup,
+                        disable_web_page_preview=disable_preview,
+                    )
+                else:
+                    await bot.send_video(
+                        chat_id=target_id,
+                        video=post.video_url,
+                        caption=text,
+                        parse_mode="HTML",
+                        reply_markup=markup,
+                    )
+            elif post.image_url and not post.has_video:
+                if len(text) > 1024:
+                    await bot.send_photo(
+                        chat_id=target_id,
+                        photo=post.image_url,
+                    )
+                    await bot.send_message(
+                        chat_id=target_id,
+                        text=text[:4096],
+                        parse_mode="HTML",
+                        reply_markup=markup,
+                        disable_web_page_preview=disable_preview,
+                    )
+                else:
+                    await bot.send_photo(
+                        chat_id=target_id,
+                        photo=post.image_url,
+                        caption=text,
+                        parse_mode="HTML",
+                        reply_markup=markup,
+                    )
             else:
                 await bot.send_message(
                     chat_id=target_id,
-                    text=text,
+                    text=text[:4096],
                     parse_mode="HTML",
                     reply_markup=markup,
                     disable_web_page_preview=disable_preview,
@@ -462,11 +514,11 @@ class BasePlatformFetcher(ABC):
         lines.append("")
         lines.append(f"<b>{post.title}</b>")
 
-        # Description (truncated)
-        if post.description and len(post.description) > 50:
-            desc = post.description[:400]
-            if len(post.description) > 400:
-                desc += "..."
+        # Description
+        if post.description and len(post.description) > 0:
+            desc = post.description
+            if len(desc) > 3500:
+                desc = desc[:3500] + "..."
             lines.append(desc)
 
         # AI summary
