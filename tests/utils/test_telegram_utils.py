@@ -1,4 +1,3 @@
-import pytest
 from bot.utils.telegram_utils import get_error_message, ERROR_MESSAGES
 
 def test_get_error_message_known_key_no_formatting():

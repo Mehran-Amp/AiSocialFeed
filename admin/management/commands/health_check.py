@@ -126,7 +126,6 @@ class Command(BaseCommand):
 
     async def _check_db(self) -> dict:
         try:
-            import django
             os.environ.setdefault("DJANGO_SETTINGS_MODULE", "admin.django_settings")
             from django.db import connection
             with connection.cursor() as c:

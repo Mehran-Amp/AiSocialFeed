@@ -1,5 +1,3 @@
-import glob
-import re
 
 account = "Mehran-Amp"
 project = "AiSocialFeed"
@@ -18,4 +16,4 @@ def _get_context(filepath, lineno):
         return ""
 
 def add_issue(title, desc, filepath, lineno, confidence, rationale, category, impact, lang):
-    context = _get_context(filepath, lineno)
+    context = _get_context(filepath, lineno)  # noqa: F841

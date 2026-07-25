@@ -12,19 +12,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 from telegram import Update
 from telegram.error import Forbidden, RetryAfter
 from telegram.ext import (
     Application,
-    ApplicationBuilder,
     CommandHandler,
     ContextTypes,
 )
 
-from config.settings import config
 
 logger = logging.getLogger(__name__)
 
@@ -269,7 +267,7 @@ async def handle_referral_safe(user_id: int, referral_code: str) -> bool:
     """
     from bot.database import get_session
     from bot.models import User
-    from sqlalchemy import select, text
+    from sqlalchemy import select
 
     async with get_session() as session:
         # Check if user already has a referrer
@@ -293,7 +291,6 @@ async def handle_referral_safe(user_id: int, referral_code: str) -> bool:
         if not referrer:
             return False
 
-        from config.settings import config as cfg
         max_bonus = 10  # from SystemConfig ideally
 
         if referrer.referral_bonus_accounts >= max_bonus:

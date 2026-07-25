@@ -6,7 +6,6 @@ Subscription plans display, USDT payment flow, TxID/screenshot submission.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update

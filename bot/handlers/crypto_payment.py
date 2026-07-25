@@ -4,11 +4,11 @@ CoinEx auto-verify. Exchange name never shown to users.
 from __future__ import annotations
 import logging
 from datetime import datetime, timezone
-from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import Application, CallbackQueryHandler, ContextTypes
-from bot.models import PlanType, SubscriptionPeriod
-from bot.utils.keyboards import subscription_keyboard, period_keyboard
+from telegram import Update  # noqa: F401
+from telegram.ext import Application, CallbackQueryHandler, ContextTypes  # noqa: F401
+from bot.models import PlanType
+from bot.utils.keyboards import period_keyboard
 logger = logging.getLogger(__name__)
 
 # INC-1 fix: prices are now read from DB PlanConfig so admin panel changes
@@ -189,7 +189,7 @@ async def _get_transaction(tx_id, user_id):
 
 async def _activate_subscription(tx_id, payment_result, user, lang):
     from bot.database import get_session
-    from bot.models import Transaction, TransactionStatus, User as U, PlanType as PT
+    from bot.models import Transaction, TransactionStatus, User as U
     from sqlalchemy import select
     from datetime import timedelta
     now=datetime.now(timezone.utc)

@@ -24,7 +24,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_redis_pool: Optional["aioredis.Redis"] = None  # type: ignore[name-defined]
+_redis_pool: Optional[object] = None  # type: ignore[name-defined]
 
 
 async def get_redis():

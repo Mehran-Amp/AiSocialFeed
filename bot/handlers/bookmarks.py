@@ -15,9 +15,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 
 from bot.database import get_session
 from bot.models import Bookmark, Platform, User
-from bot.utils.keyboards import main_menu
 from bot.utils.telegram_utils import safe_send_message
-from bot.utils.translator import t
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ async def save_bookmark(
     async with get_session() as session:
         from sqlalchemy import select, func
 
-        current_count = (await session.execute(
+        current_count = (await session.execute(  # noqa: F841
             select(func.count()).select_from(Bookmark)
             .where(Bookmark.user_id == user.id)
         )).scalar() or 0

@@ -12,8 +12,8 @@ from telegram.ext import (
 )
 from telegram import ReplyKeyboardRemove
 from bot.database import get_session
-from bot.models import Account, Category, Platform, PlanType, User, SentPost
-from bot.utils.keyboards import (
+from bot.models import Account, Category, Platform, PlanType, User, SentPost  # noqa: F401
+from bot.utils.keyboards import (  # noqa: F401
     accounts_submenu, add_account_button, back_button,
     confirm_delete_account, error_account_keyboard, error_with_home,
     locked_platform_upgrade, main_menu,
@@ -21,8 +21,8 @@ from bot.utils.keyboards import (
     platform_list_keyboard, post_buttons,
     FREE_PLATFORMS, PRO_PLATFORMS, PREMIUM_PLATFORMS, PLATFORM_EMOJI,
 )
-from bot.utils.telegram_utils import safe_send_message, safe_edit
-from bot.utils.translator import t
+from bot.utils.telegram_utils import safe_send_message, safe_edit  # noqa: F401
+from bot.utils.translator import t  # noqa: F401
 
 logger = logging.getLogger(__name__)
 WAITING_LINK = 1

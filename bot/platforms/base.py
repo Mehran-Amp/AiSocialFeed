@@ -151,7 +151,7 @@ class BasePlatformFetcher(ABC):
         """
         from bot.database import get_session
         from sqlalchemy import select
-        from bot.models import Account, User, PlanConfig
+        from bot.models import Account, User
 
         async with get_session() as session:
             account = (await session.execute(
@@ -358,7 +358,6 @@ class BasePlatformFetcher(ABC):
         target_id = user.channel_forward_id or user.telegram_id
 
         from bot.utils.telegram_utils import get_bot
-        from bot.utils.fixes import safe_send_fixed
         bot = get_bot()
 
         try:

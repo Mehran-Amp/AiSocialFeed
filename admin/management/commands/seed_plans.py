@@ -10,9 +10,7 @@ class Command(BaseCommand):
     help = "Seed plan configurations from DEFAULT_PLAN_FEATURES"
 
     def handle(self, *args, **options):
-        from config.settings import DEFAULT_PLAN_FEATURES
         from admin.django_models import PlanConfigProxy as PlanConfig, SystemConfigProxy as SystemConfig
-        from django.db import connection
 
         self.stdout.write("Seeding plan configurations...")
 

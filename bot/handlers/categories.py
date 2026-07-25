@@ -20,7 +20,7 @@ from telegram.ext import (
 
 from bot.database import get_session
 from bot.models import Category, PlanType, User
-from bot.utils.keyboards import back_button, main_menu
+from bot.utils.keyboards import main_menu
 from bot.utils.telegram_utils import safe_send_message
 from bot.utils.translator import t
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup

@@ -10,7 +10,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import traceback
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -168,7 +167,7 @@ async def process_post(
 
     try:
         client = _get_client()
-        resp = await client.chat.completions.create(
+        resp = await client.chat.completions.create(  # noqa: F841
             model=config.deepseek.model_fast,
             messages=[
                 {"role": "system", "content": "You are a JSON-only API. Return only valid JSON, no markdown."},
@@ -205,7 +204,7 @@ async def detect_language(text: str) -> Optional[str]:
 
     try:
         client = _get_client()
-        resp = await client.chat.completions.create(
+        resp = await client.chat.completions.create(  # noqa: F841
             model=config.deepseek.model_fast,
             messages=[
                 {"role": "system", "content": "Return ONLY a JSON object: {\"lang\": \"ISO_CODE\"}"},
@@ -232,7 +231,7 @@ class AIService:
             return False
         try:
             client = _get_client()
-            resp = await client.chat.completions.create(
+            resp = await client.chat.completions.create(  # noqa: F841
                 model=config.deepseek.model_fast,
                 messages=[{"role": "user", "content": "ping"}],
                 max_tokens=5,
@@ -253,7 +252,7 @@ class AIService:
 
         try:
             client = _get_client()
-            resp = await client.chat.completions.create(
+            resp = await client.chat.completions.create(  # noqa: F841
                 model=config.deepseek.model_fast,
                 messages=[
                     {"role": "system", "content": system_prompt},

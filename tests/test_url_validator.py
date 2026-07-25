@@ -1,4 +1,3 @@
-import pytest
 from bot.utils.url_validator import is_safe_url
 
 def test_safe_urls():

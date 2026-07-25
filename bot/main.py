@@ -3,7 +3,6 @@ SocialtoFeed — Bot Entry Point
 Initializes database, loads translations, starts bot (webhook or polling).
 """
 
-import asyncio
 import logging
 import sys
 

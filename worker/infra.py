@@ -7,7 +7,6 @@ SocialtoFeed — Backup & Infrastructure Tasks
 
 from __future__ import annotations
 
-import asyncio
 import gzip
 import logging
 import os
@@ -224,7 +223,6 @@ def check_webhook_health() -> dict:
 async def _check_webhook() -> dict:
     from datetime import datetime, timezone
     from bot.cache import get_redis
-    from config.settings import config
 
     r = await get_redis()
     now = datetime.now(timezone.utc)

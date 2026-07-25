@@ -3,12 +3,10 @@ SocialtoFeed — Keyboards v4.2
 Complete implementation of the final UI/UX spec.
 """
 from __future__ import annotations
-from typing import Optional
 from telegram import (
     InlineKeyboardButton, InlineKeyboardMarkup,
     KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove,
 )
-from bot.utils.translator import t
 
 PLATFORM_EMOJI = {
     "youtube":"🎬","twitter":"𝕏","instagram":"📸","rss":"📡",

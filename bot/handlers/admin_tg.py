@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -74,7 +73,7 @@ async def cb_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
 
     from bot.database import get_session
-    from bot.models import User, Transaction, TransactionStatus, Account, SupportTicket, SystemLog, LogLevel, PlanType
+    from bot.models import User, Transaction, TransactionStatus, SupportTicket, SystemLog, LogLevel, PlanType
     from bot.utils.keyboards import admin_dashboard_menu
     from sqlalchemy import select, func
     from datetime import datetime, timezone, timedelta
@@ -178,7 +177,7 @@ async def cb_revenue_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     from bot.database import get_session
     from bot.models import Transaction, TransactionStatus, PlanType
     from sqlalchemy import select, func
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timezone
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
     now = datetime.now(timezone.utc)
@@ -268,7 +267,7 @@ async def cb_retry_tx(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     tx_id = int(query.data.split(":")[2])
 
     from bot.database import get_session
-    from bot.models import Transaction, TransactionStatus
+    from bot.models import Transaction
     from bot.services.payment_service import check_deposit
     from bot.utils.fixes import activate_subscription_safe
     from sqlalchemy import select
@@ -338,7 +337,7 @@ async def cb_user_search_receive(update: Update, context: ContextTypes.DEFAULT_T
 
     from bot.database import get_session
     from bot.models import User
-    from sqlalchemy import select, or_
+    from sqlalchemy import select
 
     async with get_session() as session:
         try:
@@ -355,7 +354,7 @@ async def cb_user_search_receive(update: Update, context: ContextTypes.DEFAULT_T
             await update.message.reply_text("❌ User not found.")
             return _SEARCH_USER
 
-        uid        = user.id
+        uid        = user.id  # noqa: F841
         tg_id      = user.telegram_id
         username   = user.username or "—"
         plan       = user.plan.value if hasattr(user.plan, "value") else str(user.plan)
@@ -477,7 +476,7 @@ async def cb_pending_verifications(update: Update, context: ContextTypes.DEFAULT
 async def cb_user_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
 
     from bot.database import get_session
     from bot.models import User
@@ -512,7 +511,7 @@ async def cb_user_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def cb_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
     await query.edit_message_reply_markup(reply_markup=admin_confirm(f"ban:{uid}", "Ban"))
 
 
@@ -520,7 +519,7 @@ async def cb_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
     await query.edit_message_reply_markup(reply_markup=admin_confirm(f"unban:{uid}", "Unban"))
 
 
@@ -528,7 +527,7 @@ async def cb_unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def cb_grant(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
     await query.edit_message_reply_markup(reply_markup=admin_grant_plan(uid))
 
 
@@ -585,7 +584,7 @@ async def cb_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # data: adm:confirm:ban:123  or  adm:confirm:unban:123
     parts  = query.data.split(":")   # ['adm','confirm','ban','123']
     action = parts[2]
-    uid    = int(parts[3])
+    uid    = int(parts[3])  # noqa: F841
 
     from bot.database import get_session
     from bot.models import User
@@ -971,7 +970,7 @@ _SEND_USER_MESSAGE = 4
 async def cb_grant_custom_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
     context.user_data['grant_uid'] = uid
 
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
@@ -987,12 +986,12 @@ async def cb_grant_custom_type(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     plan_type = query.data.split(":")[2]
     context.user_data['grant_plan'] = plan_type
-    uid = context.user_data.get('grant_uid')
+    uid = context.user_data.get('grant_uid')  # noqa: F841
     await query.edit_message_text(f"Plan: <b>{plan_type}</b>\n\nEnter duration in months (1-12):", parse_mode=ParseMode.HTML)
     return _GRANT_CUSTOM_PLAN
 
 async def msg_grant_custom_duration(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    uid = context.user_data.get('grant_uid')
+    uid = context.user_data.get('grant_uid')  # noqa: F841
     plan_type = context.user_data.get('grant_plan')
     try:
         months = int(update.message.text.strip())
@@ -1045,7 +1044,7 @@ _SEND_USER_MESSAGE = 4
 async def cb_send_message_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
     context.user_data['msg_uid'] = uid
 
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
@@ -1054,12 +1053,11 @@ async def cb_send_message_start(update: Update, context: ContextTypes.DEFAULT_TY
     return _SEND_USER_MESSAGE
 
 async def msg_send_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    uid = context.user_data.get('msg_uid')
+    uid = context.user_data.get('msg_uid')  # noqa: F841
 
     from bot.database import get_session
     from bot.models import User
     from sqlalchemy import select
-    from bot.utils.telegram_utils import safe_send_message
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
     async with get_session() as session:
@@ -1085,7 +1083,7 @@ async def msg_send_user_message(update: Update, context: ContextTypes.DEFAULT_TY
 async def cb_delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
 
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     kb = InlineKeyboardMarkup([
@@ -1098,7 +1096,7 @@ async def cb_delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def cb_delete_user_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    uid = int(query.data.split(":")[2])
+    uid = int(query.data.split(":")[2])  # noqa: F841
 
     from bot.database import get_session
     from bot.models import User

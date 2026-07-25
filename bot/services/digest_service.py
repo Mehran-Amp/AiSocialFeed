@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 
-from bot.utils.translator import t
 
 logger = logging.getLogger(__name__)
 

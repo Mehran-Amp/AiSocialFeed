@@ -6,8 +6,6 @@ v3.2: Correlation ID per Telegram update for per-session tracing.
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import logging.handlers
 import traceback
@@ -246,7 +244,6 @@ async def generate_debug_report() -> dict:
     import sys
 
     from bot.database import get_session, check_db_connection
-    import redis.asyncio as aioredis
 
     report: dict[str, Any] = {
         "report_id": f"DBG-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
@@ -275,8 +272,8 @@ async def generate_debug_report() -> dict:
     try:
         db_ok = await check_db_connection()
         async with get_session() as session:
-            from sqlalchemy import text, func, select
-            from bot.models import User, Account, SentPost, Transaction, TransactionStatus
+            from sqlalchemy import func, select
+            from bot.models import User, Account, Transaction, TransactionStatus
 
             total_users = (await session.execute(
                 select(func.count()).select_from(User)

@@ -2,7 +2,7 @@
 3 times in first 3 weeks, 1/week, native language."""
 from __future__ import annotations
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler, ContextTypes

@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
 from bot.database import get_session
-from bot.models import PlanType, User
+from bot.models import User
 from bot.utils.keyboards import (
     referral_menu,
     referral_share_keyboard,

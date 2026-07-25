@@ -27,12 +27,12 @@ async def main():
         try:
             async for partition in stream.scalars().partitions(5):
                 print("Partition:", partition)
-        except Exception as e:
+        except Exception as e:  # noqa: F841
             print("ERROR", e)
 
         print("Done partitions")
 
 try:
     asyncio.run(main())
-except Exception as e:
+except Exception as e:  # noqa: F841
     pass

@@ -1,4 +1,3 @@
-import pytest
 from bot.models import User
 
 def test_effective_max_accounts():

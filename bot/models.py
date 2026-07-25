@@ -10,12 +10,11 @@ import enum
 import hashlib
 import secrets
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import (
     BigInteger, Boolean, Column, DateTime, Enum as SAEnum,
     Float, ForeignKey, Index, Integer, JSON, SmallInteger,
-    String, Text, UniqueConstraint, func,
+    String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 

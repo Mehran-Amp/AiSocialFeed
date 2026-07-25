@@ -2,21 +2,18 @@
 from __future__ import annotations
 import logging
 from datetime import datetime, timezone
-from typing import Optional
-from telegram import Update
 from telegram.constants import ParseMode
-from telegram.ext import Application, CallbackQueryHandler, ContextTypes
+from telegram import Update  # noqa: F401
+from telegram.ext import ContextTypes, Application, CallbackQueryHandler  # noqa: F401
 from bot.database import get_session
-from bot.models import PlanType, User
-from bot.utils.keyboards import (
+from bot.utils.keyboards import (  # noqa: F401
+    profile_menu, settings_menu, main_menu,  # noqa: F401  # noqa: F401
     ai_features_menu, ai_translate_menu, ai_chat_locked_keyboard,
     back_button, compare_plans_keyboard, help_menu,
-    main_menu, profile_menu, settings_menu,
     settings_locked_upgrade, subscription_menu,
     ticket_subjects,
 )
 from bot.utils.telegram_utils import safe_send_message
-from bot.utils.translator import t
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +277,7 @@ async def cb_ai(update, context):
                 from bot.models import User as U
                 db=(await s.execute(select(U).where(U.id==user.id))).scalar_one_or_none()
                 if db:
-                setattr(db,col,not getattr(db,col)); setattr(user,col,getattr(db,col))
+                    setattr(db,col,not getattr(db,col)); setattr(user,col,getattr(db,col))
                 await s.commit()
         await query.edit_message_reply_markup(reply_markup=ai_features_menu(
             lang,user.ai_summarize,user.ai_translate,user.ai_categorize,user.ai_spam_tag,
@@ -353,7 +350,7 @@ async def cb_sub(update, context):
     user=context.user_data.get("user")
     if not user: return
     lang=user.language; fa=is_persian(lang); action=query.data.split(":")[1]
-    plan=_plan_str(user)
+    plan=_plan_str(user)  # noqa: F841
 
     if action=="compare":
         if fa:

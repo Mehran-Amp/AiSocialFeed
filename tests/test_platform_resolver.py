@@ -1,4 +1,3 @@
-import pytest
 
 from bot.services.platform_resolver import _extract_instagram_username
 

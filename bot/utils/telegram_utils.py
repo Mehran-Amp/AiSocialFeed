@@ -16,7 +16,7 @@ from telegram.error import TelegramError
 from config.settings import config
 
 if TYPE_CHECKING:
-    from telegram.ext import Application
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,7 @@ async def safe_edit(
             pass  # message was deleted — safe to ignore
         else:
             logger.warning(f"[safe_edit] {e}")
+async def _delete_later(chat_id, message_id, delay):
     """Delete a message after a delay (for system notifications)."""
     await asyncio.sleep(delay)
     try:

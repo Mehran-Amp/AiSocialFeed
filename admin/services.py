@@ -18,8 +18,7 @@ def activate_subscription(tx, reviewed_by: str = "admin") -> None:
     Sends Telegram notification to user.
     Called from Django admin action.
     """
-    from .django_models import TransactionProxy, UserProxy, PlanConfigProxy
-    from django.utils import timezone as dj_tz
+    from .django_models import UserProxy
 
     if tx.status != "pending":
         raise ValueError(f"Transaction {tx.id} is not pending (status: {tx.status})")

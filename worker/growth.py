@@ -9,7 +9,6 @@ SocialtoFeed — Growth & Re-engagement Tasks
 
 from __future__ import annotations
 
-from config.settings import config
 import asyncio
 import logging
 import os
@@ -162,7 +161,6 @@ async def send_referral_invite(user, bot_username: str) -> str:
     from bot.database import get_session
     from bot.models import User
     from sqlalchemy import select, func
-    from bot.models import Account
 
     async with get_session() as session:
         # Count how many people this user referred
@@ -224,7 +222,7 @@ def broadcast_message_task(message: str, plan_filter: str = "all") -> dict:
     """
     async def _broadcast():
         from bot.database import init_db, get_session
-        from bot.models import User, PlanType
+        from bot.models import User
         from bot.utils.fixes import safe_send_fixed
         from bot.utils.telegram_utils import get_bot
         from sqlalchemy import select

@@ -9,10 +9,9 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any, Optional
-from collections.abc import MutableMapping
 
 from telegram.ext import BasePersistence, PersistenceInput
-from telegram.ext._utils.types import BD, CD, UD, CDCData, ConversationKey
+from telegram.ext._utils.types import ConversationKey
 
 logger = logging.getLogger(__name__)
 
@@ -103,15 +102,12 @@ class RedisPersistenceBackend(BasePersistence):
 
     async def refresh_user_data(self, user_id: int, user_data: dict) -> None:
         """No-op: Redis is updated via update_user_data; nothing extra to refresh."""
-        pass
 
     async def refresh_chat_data(self, chat_id: int, chat_data: dict) -> None:
         """No-op: Redis is updated via update_chat_data; nothing extra to refresh."""
-        pass
 
     async def refresh_bot_data(self, bot_data: dict) -> None:
         """No-op: Redis is updated via update_bot_data; nothing extra to refresh."""
-        pass
 
     async def update_user_data(self, user_id: int, data: dict) -> None:
         all_data = await self._get(self._key("user_data")) or {}
