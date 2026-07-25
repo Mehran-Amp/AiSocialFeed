@@ -75,10 +75,10 @@ celery_app.conf.update(
         "worker.tasks.schedule_pending_fetches":    {"queue": "default"},
     },
     beat_schedule={
-        # Fetch all active accounts every 15 minutes
+        # Fetch all active accounts every 5 minutes
         "schedule-fetches": {
             "task": "worker.tasks.schedule_pending_fetches",
-            "schedule": crontab(minute="*/15"),
+            "schedule": crontab(minute="*/5"),
         },
         # Send scheduled digests every hour
         "send-digests": {
@@ -214,7 +214,6 @@ def fetch_account_task(self, account_id: int) -> dict:
                 .where(Account.id == account_id)
                 .values(next_fetch_at=next_run)
             )
-            await session.commit()
 
         fetcher = get_fetcher(account.platform)
         delivered = await fetcher.run(account_id)
@@ -286,9 +285,10 @@ def schedule_pending_fetches() -> dict:
         if total == 0:
             return {"scheduled": 0}
 
-        # Spread window: 25 minutes = 1,500 seconds
+        # Spread window: 4 minutes = 240 seconds
         # Small loads (<50 accounts) fire immediately - no need to spread
-        SPREAD_WINDOW = 25 * 60  # seconds
+        # Must be strictly less than the beat schedule (5 mins) to prevent overlapping queued tasks
+        SPREAD_WINDOW = 4 * 60  # seconds
 
         for i, acc_id in enumerate(due_accounts):
             if total <= 50:
@@ -302,7 +302,7 @@ def schedule_pending_fetches() -> dict:
                 countdown=delay,
             )
 
-        spread_info = "immediate" if total <= 50 else f"spread over 25 min"
+        spread_info = "immediate" if total <= 50 else f"spread over 4 min"
         logger.info(f"Scheduled {total} account fetches ({spread_info}).")
         return {"scheduled": total, "spread": total > 50}
 
