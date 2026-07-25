@@ -114,24 +114,16 @@ async def _trigger_background_fetches(user_id:int) -> None:
 
 # ── 🔄 HYBRID UPDATES ─────────────────────────────────────────────────────────
 async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
-    lang=user.language; f=lang=="fa"; now=datetime.now(timezone.utc)
+    from bot.utils.translator import t
 
-    posts = await _fetch_recent_posts(user.id, user.last_feed_viewed_at, now)
-    await _update_last_feed_viewed(user.id, now)
+    # Notify user that background fetches have been triggered
+    await safe_send_message(
+        update.effective_user.id,
+        t("menu.fetch_now", lang=user.language)
+    )
 
-    if not posts:
-        await safe_send_message(update.effective_user.id,"🔄 "+("پست جدیدی یافت نشد." if f else "No new posts found."))
-    else:
-        await safe_send_message(update.effective_user.id,
-            f"🔄 <b>{len(posts)} "+("پست جدید</b>" if f else "new post(s)</b>"),parse_mode=ParseMode.HTML)
-        plan=_plan_str(user)
-        for post, platform in posts:
-            text=f"<b>{post.title or ''}</b>\n{post.url or ''}"
-            kb=post_buttons(
-                platform=platform.value if platform else "",
-                url=post.url or "",url_key=str(post.id),lang=lang,plan=plan)
-            await safe_send_message(update.effective_user.id,text,parse_mode=ParseMode.HTML,reply_markup=kb)
-
+    # Trigger the Celery tasks to fetch dynamically. Any new posts found will be sent
+    # individually as messages to the user by the worker tasks (via _deliver_post).
     await _trigger_background_fetches(user.id)
 
 # ── ACCOUNTS SUBMENU ──────────────────────────────────────────────────────────
