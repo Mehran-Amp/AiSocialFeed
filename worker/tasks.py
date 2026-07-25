@@ -33,6 +33,12 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
         hb_key = f"celery:worker:heartbeat:{socket.gethostname()}"
         r.set(hb_key, "1", ex=cfg.admin.worker_heartbeat_ttl)
         r.close()
+
+        # Initialize Telegram Bot instance for Celery workers
+        from telegram import Bot
+        from bot.utils.telegram_utils import set_bot
+        bot = Bot(token=cfg.telegram.token)
+        set_bot(bot)
     except Exception as e:
         logger.warning(f"init_db on worker start failed: {e}")
 
