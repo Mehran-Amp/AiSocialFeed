@@ -21,6 +21,8 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
         async def _init_and_dispose():
             await init_db()
             await close_db()
+            from bot.cache import close_redis
+            await close_redis()
 
         asyncio.run(_init_and_dispose())
         # v3.2: write heartbeat key so health_check and digest can confirm worker is alive
