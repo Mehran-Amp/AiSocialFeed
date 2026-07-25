@@ -33,7 +33,6 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
         hb_key = f"celery:worker:heartbeat:{socket.gethostname()}"
         r.set(hb_key, "1", ex=cfg.admin.worker_heartbeat_ttl)
         r.close()
-
     except Exception as e:
         logger.warning(f"init_db on worker start failed: {e}")
 
