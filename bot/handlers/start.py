@@ -252,7 +252,7 @@ async def _handle_waiting_for(update, context, user, waiting_for, text) -> bool:
     fa = lang == "fa"
 
     # If user presses the physical Home or Back keyboard buttons, break out of waiting_for
-    if text.startswith("🏠") or text.startswith("↩️"):
+    if text.startswith("🏠") or text.startswith("↩️") or text.startswith("⚙️"):
         context.user_data.pop("waiting_for", None)
         return False
 

@@ -386,6 +386,10 @@ async def cb_menu_main(update:Update,context:ContextTypes.DEFAULT_TYPE)->None:
     query=update.callback_query; await query.answer()
     user:Optional[User]=context.user_data.get("user")
     if not user: return
+
+    # POP THE WAITING_FOR STATE TO ENSURE AI CHAT LOOP IS TERMINATED
+    context.user_data.pop("waiting_for", None)
+
     count=await _count_accounts(user.id)
     await safe_send_message(update.effective_user.id,"🏠",
         reply_markup=main_menu(user.language,_plan_str(user),_is_admin(context),count))
