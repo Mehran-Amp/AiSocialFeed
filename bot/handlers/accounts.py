@@ -125,11 +125,13 @@ async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:Us
         await safe_send_message(update.effective_user.id,
             f"🔄 <b>{len(posts)} "+("پست جدید</b>" if f else "new post(s)</b>"),parse_mode=ParseMode.HTML)
         plan=_plan_str(user)
+        from bot.handlers.video import _encode_url
         for post, platform in posts:
             text=f"<b>{post.title or ''}</b>\n{post.url or ''}"
+            url_key = _encode_url(post.url) if post.url else str(post.id)
             kb=post_buttons(
                 platform=platform.value if platform else "",
-                url=post.url or "",url_key=str(post.id),lang=lang,plan=plan)
+                url=post.url or "",url_key=url_key,lang=lang,plan=plan)
             await safe_send_message(update.effective_user.id,text,parse_mode=ParseMode.HTML,reply_markup=kb)
 
     await _trigger_background_fetches(user.id)
