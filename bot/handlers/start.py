@@ -157,9 +157,15 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     add_new_lbl     = "➕ " + ("افزودن جدید" if fa else "Add New")
     back_lbl        = "↩️ " + ("بازگشت" if fa else "Back")
     profile_lbl     = "👤 " + ("پروفایل" if fa else "Profile")
+    saved_posts_lbl = "🔖 " + ("پست‌های ذخیره شده" if fa else "Saved Posts")
 
     # Accounts button on main menu is dynamic: "📋 Accounts (N)" or "➕ Account"
     is_accounts_btn = text.startswith("📋 ") or text.startswith("➕ ")
+
+    if text == saved_posts_lbl:
+        from bot.handlers.bookmarks import show_bookmarks
+        await show_bookmarks(update, context)
+        return
 
     if text == updates_label:
         if user.plan == PlanType.FREE:
