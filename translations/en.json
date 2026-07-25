@@ -61,6 +61,8 @@
   },
   "post": {
     "view_original": "🔗 View Original",
+    "footer": "🤖 <b>SocialtoFeed</b> — Get social feeds in Telegram\n👉 t.me/{bot_username}",
+    "ai_translation_label": "🌐 Translation:",
     "download_video": "⬇️ Download",
     "share": "📤 Share",
     "view_comments": "💬 Comments",
@@ -69,9 +71,7 @@
     "download_link": "📦 File too large for Telegram — here's the direct link:",
     "download_timeout": "⏱ Download timed out — sending direct link instead.",
     "spam_tag": "⚠️ Possible spam",
-    "ai_summary_label": "📝 Summary:",
-    "ai_translation_label": "🌐 Translation:",
-    "footer": "🤖 <b>SocialtoFeed</b> — Get social feeds in Telegram\n👉 t.me/{bot_username}"
+    "ai_summary_label": "📝 Summary:"
   },
   "subscription": {
     "current_plan": "📊 Your Plan: <b>{plan}</b>\nAccounts: {used}/{limit}\nExpires: {expires}",

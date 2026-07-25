@@ -363,13 +363,27 @@ class BasePlatformFetcher(ABC):
 
         try:
             if post.image_url and not post.has_video:
-                await bot.send_photo(
-                    chat_id=target_id,
-                    photo=post.image_url,
-                    caption=text[:1024],
-                    parse_mode="HTML",
-                    reply_markup=markup,
-                )
+                try:
+                    await bot.send_photo(
+                        chat_id=target_id,
+                        photo=post.image_url,
+                        caption=text[:1024],
+                        parse_mode="HTML",
+                        reply_markup=markup,
+                    )
+                except Exception as photo_err:
+                    err_lower = str(photo_err).lower()
+                    if "failed to get http url content" in err_lower or "wrong file identifier/http url" in err_lower or "wrong type of the web page content" in err_lower:
+                        logger.warning(f"sendPhoto failed ({photo_err}) for post {post.post_id}, falling back to send_message.")
+                        await bot.send_message(
+                            chat_id=target_id,
+                            text=text,
+                            parse_mode="HTML",
+                            reply_markup=markup,
+                            disable_web_page_preview=disable_preview,
+                        )
+                    else:
+                        raise photo_err
             else:
                 await bot.send_message(
                     chat_id=target_id,
