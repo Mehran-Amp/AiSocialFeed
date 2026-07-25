@@ -1,0 +1,62 @@
+SocialtoFeed: Your Ultimate Social Media Assistant on Telegram
+
+Welcome to SocialtoFeed!
+
+SocialtoFeed is an intelligent assistant that lives right inside your Telegram app. It is designed to save you time and keep you updated by gathering all your favorite content from across the internet and delivering it straight to you in one place.
+
+---
+
+### What Does SocialtoFeed Do?
+
+Instead of constantly switching between different apps to check for updates, SocialtoFeed brings everything to you. It securely connects to your favorite platforms and delivers the latest posts, videos, and articles directly into a Telegram chat.
+
+**Supported Platforms:**
+- YouTube
+- Twitter / X
+- Instagram
+- TikTok
+- LinkedIn
+- Reddit
+- Telegram Channels
+- RSS Feeds (News websites and blogs)
+
+---
+
+### Why Use SocialtoFeed?
+
+1. **Everything in One Place:** No more jumping from app to app. Read your favorite subreddits, watch the latest YouTube videos, and check Twitter updates all from within Telegram.
+2. **AI-Powered Insights:** SocialtoFeed doesn't just forward links. It uses advanced Artificial Intelligence to:
+   - **Summarize Long Content:** Get the key points of long articles or videos without having to read or watch the whole thing.
+   - **Translate on the Fly:** Follow international creators? The bot can automatically translate foreign content into your native language.
+   - **Answer Questions:** You can ask the AI questions about the content it just sent you.
+3. **No Clutter:** You control exactly what you subscribe to, ensuring your feed only contains content you care about.
+
+---
+
+### How to Use SocialtoFeed
+
+Using the bot is as simple as chatting with a friend on Telegram. Here is a quick example of how you can interact with it:
+
+**1. Subscribing to a Feed**
+Simply send the bot a link to a profile, channel, or website. For example:
+You send: `https://youtube.com/@ChannelName`
+The bot will reply: "Successfully subscribed to ChannelName! I will notify you when they post new content."
+
+**2. Managing Your Subscriptions**
+You can use easy commands to control your account:
+- Send `/start` to see the main menu and welcome message.
+- Send `/subscriptions` to view a list of everything you are following.
+- Send `/settings` to adjust your language preferences or turn AI summaries on/off.
+
+**3. Interacting with Content**
+When a creator you follow posts a new update, the bot will send you a message. Below the message, you will often see buttons you can tap, such as:
+- [ 📝 Summarize ] - Tap this, and the AI will reply with a quick summary of the post.
+- [ 🌐 Translate ] - Tap this to instantly translate the post into your language.
+
+---
+
+### Getting Started
+
+To get started, simply open Telegram, search for the SocialtoFeed bot (or click the invite link provided to you), and press "Start".
+
+Welcome to a more organized, intelligent, and time-saving way to consume your favorite content!
