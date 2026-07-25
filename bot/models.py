@@ -374,6 +374,14 @@ class SentPost(Base):
     published_at = Column(DateTime(timezone=True), nullable=True)
     sent_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
+    # v2.0 Extensions
+    author = Column(String(256), nullable=True)
+    media_url = Column(String(1024), nullable=True)
+    media_type = Column(String(32), nullable=True)
+    thumbnail_url = Column(String(1024), nullable=True)
+    duration = Column(String(16), nullable=True)
+    stats_json = Column(JSON, nullable=True)
+
     account = relationship("Account", back_populates="sent_posts")
 
     @staticmethod
