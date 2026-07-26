@@ -21,13 +21,13 @@ def upgrade() -> None:
     op.execute("UPDATE plan_configs SET bookmark_limit = 0")
 
     # Also update the column default so any future rows start unlimited
-    op.alter_column(
-        "plan_configs",
-        "bookmark_limit",
-        server_default="0",
-        existing_type=sa.Integer(),
-        existing_nullable=False,
-    )
+    with op.batch_alter_table("plan_configs") as batch_op:
+        batch_op.alter_column(
+            "bookmark_limit",
+            server_default="0",
+            existing_type=sa.Integer(),
+            existing_nullable=False,
+        )
 
 
 def downgrade() -> None:
@@ -35,10 +35,10 @@ def downgrade() -> None:
     op.execute("UPDATE plan_configs SET bookmark_limit = 10  WHERE plan = 'free'")
     op.execute("UPDATE plan_configs SET bookmark_limit = 100 WHERE plan = 'pro'")
     op.execute("UPDATE plan_configs SET bookmark_limit = 500 WHERE plan = 'premium'")
-    op.alter_column(
-        "plan_configs",
-        "bookmark_limit",
-        server_default="10",
-        existing_type=sa.Integer(),
-        existing_nullable=False,
-    )
+    with op.batch_alter_table("plan_configs") as batch_op:
+        batch_op.alter_column(
+            "bookmark_limit",
+            server_default="10",
+            existing_type=sa.Integer(),
+            existing_nullable=False,
+        )

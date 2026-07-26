@@ -114,7 +114,6 @@ async def _trigger_background_fetches(user_id:int) -> None:
 
 # ── 🔄 HYBRID UPDATES ─────────────────────────────────────────────────────────
 async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
-
     from bot.utils.translator import t
 
     # Notify user that background fetches have been triggered
@@ -126,7 +125,6 @@ async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:Us
     # Trigger the Celery tasks to fetch dynamically. Any new posts found will be sent
     # individually as messages to the user by the worker tasks (via _deliver_post).
     await _trigger_background_fetches(user.id)
-
 # ── ACCOUNTS SUBMENU ──────────────────────────────────────────────────────────
 async def show_accounts_submenu(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
     lang=user.language; f=lang=="fa"

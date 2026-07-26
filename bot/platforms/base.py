@@ -31,6 +31,8 @@ class FetchedPost:
     video_url: Optional[str] = None
     has_video: bool = False
     author: Optional[str] = None
+    duration: Optional[str] = None
+    stats_json: Optional[dict] = None
     extra: dict = field(default_factory=dict)
 
     @property
@@ -299,6 +301,12 @@ class BasePlatformFetcher(ABC):
                 title=post.title[:512] if post.title else None,
                 url=post.url[:1024] if post.url else None,
                 published_at=post.published_at,
+                author=post.author[:256] if post.author else None,
+                media_url=post.image_url[:1024] if post.image_url else (post.video_url[:1024] if post.video_url else None),
+                media_type="video" if post.has_video else ("image" if post.image_url else None),
+                thumbnail_url=post.image_url[:1024] if (post.has_video and post.image_url) else None,
+                duration=post.duration[:16] if post.duration else None,
+                stats_json=post.stats_json,
             )
             session.add(entry)
             await session.commit()
@@ -362,16 +370,67 @@ class BasePlatformFetcher(ABC):
         bot = get_bot()
 
         try:
-
-            if post.image_url and not post.has_video:
+            # If this is a native Telegram post, try to copy it exactly
+            if account.platform.value == "telegram" and post.post_id and post.post_id.isdigit():
                 try:
-                    await bot.send_photo(
+                    raw_id = account.identifier.lstrip('@')
+                    # only prepend '@' if it's not a numeric ID
+                    from_chat = raw_id if raw_id.startswith('-') or raw_id.isdigit() else f"@{raw_id}"
+                    await bot.copy_message(
                         chat_id=target_id,
-                        photo=post.image_url,
-                        caption=text[:1024],
+                        from_chat_id=from_chat,
+                        message_id=int(post.post_id),
+                        reply_markup=markup
+                    )
+                    return
+                except Exception as ex:
+                    logger.warning(f"Failed to copy native Telegram message {post.post_id}: {ex}")
+                    # Fallback to standard sending below if copy_message fails
+
+            if post.video_url:
+                if len(text) > 1024:
+                    # Send media first, then text
+                    await bot.send_video(
+                        chat_id=target_id,
+                        video=post.video_url,
+                    )
+                    await bot.send_message(
+                            chat_id=target_id,
+                            text=text[:4096],
+                            parse_mode="HTML",
+                            reply_markup=markup,
+                            disable_web_page_preview=disable_preview,
+                        )
+                else:
+                    await bot.send_video(
+                        chat_id=target_id,
+                        video=post.video_url,
+                        caption=text,
                         parse_mode="HTML",
                         reply_markup=markup,
                     )
+            elif post.image_url and not post.has_video:
+                try:
+                    if len(text) > 1024:
+                        await bot.send_photo(
+                            chat_id=target_id,
+                            photo=post.image_url,
+                        )
+                        await bot.send_message(
+                            chat_id=target_id,
+                            text=text[:4096],
+                            parse_mode="HTML",
+                            reply_markup=markup,
+                            disable_web_page_preview=disable_preview,
+                        )
+                    else:
+                        await bot.send_photo(
+                            chat_id=target_id,
+                            photo=post.image_url,
+                            caption=text,
+                            parse_mode="HTML",
+                            reply_markup=markup,
+                        )
                 except Exception as photo_err:
                     from telegram.error import BadRequest
                     # Any BadRequest from Telegram API for sendPhoto (e.g. invalid url host, wrong type, failed to get content)
@@ -380,7 +439,7 @@ class BasePlatformFetcher(ABC):
                         logger.warning(f"sendPhoto failed ({photo_err}) for post {post.post_id}, falling back to send_message.")
                         await bot.send_message(
                             chat_id=target_id,
-                            text=text,
+                            text=text[:4096],
                             parse_mode="HTML",
                             reply_markup=markup,
                             disable_web_page_preview=disable_preview,
@@ -389,12 +448,12 @@ class BasePlatformFetcher(ABC):
                         raise photo_err
             else:
                 await bot.send_message(
-                    chat_id=target_id,
-                    text=text[:4096],
-                    parse_mode="HTML",
-                    reply_markup=markup,
-                    disable_web_page_preview=disable_preview,
-                )
+                            chat_id=target_id,
+                            text=text[:4096],
+                            parse_mode="HTML",
+                            reply_markup=markup,
+                            disable_web_page_preview=disable_preview,
+                        )
         except Exception as e:
             # Check if channel access lost
             error_str = str(e).lower()
@@ -420,93 +479,12 @@ class BasePlatformFetcher(ABC):
         post: FetchedPost,
         ai_result: dict,
     ) -> str:
-        """Format a post for Telegram HTML delivery."""
+        """Format a post for Telegram HTML delivery using the v2.0 format."""
+        from bot.services.post_formatter import build_caption
         from bot.utils.translator import t
 
         lang = user.language
-
-        # Platform emoji + name
-        platform_icons = {
-            "youtube":   "🎬 YouTube",
-            "twitter":   "🐦 Twitter/X",
-            "instagram": "📸 Instagram",
-            "rss":       "📡 RSS",
-            "tiktok":    "🎵 TikTok",
-            "linkedin":  "💼 LinkedIn",
-            "reddit":    "🤖 Reddit",
-            "telegram":  "✈️ Telegram",
-            "bluesky":   "🦋 Bluesky",
-            "mastodon":  "🐘 Mastodon",
-            "threads":   "🧵 Threads",
-            "facebook":  "👥 Facebook",
-            "discord":   "🎮 Discord",
-        }
-        platform_label = platform_icons.get(account.platform.value, account.platform.value.capitalize())
-
-        # Category name
-        category_line = ""
-        if account.category_id:
-            # Category name resolved at call time — passed via extra or fetched
-            cat_name = post.extra.get("category_name")
-            if cat_name:
-                category_line = f"📁 {cat_name}\n"
-
-        # Date
-        date_str = ""
-        if post.published_at:
-            date_str = post.published_at.strftime("%Y-%m-%d %H:%M:%S")
-
-        # Spam tag
-        spam_line = ""
-        is_spam = ai_result.get("is_spam", False)
-        if is_spam:
-            spam_line = f"\n{t('post.spam_tag', lang)}"
-
-        # AI category
-        ai_cat_line = ""
-        ai_cat = ai_result.get("category")
-        if ai_cat:
-            ai_cat_line = f"\n🏷 {ai_cat.capitalize()}"
-
-        # Main content
-        lines = [
-            f"<b>{platform_label}</b>",
-            category_line,
-            f"📌 {account.display_name}",
-        ]
-        if date_str:
-            lines.append(f"🕐 {date_str}")
-        lines.append("")
-        lines.append(f"<b>{post.title}</b>")
-
-        # Description
-        if post.description and len(post.description) > 0:
-            desc = post.description
-            if len(desc) > 3500:
-                desc = desc[:3500] + "..."
-            lines.append(desc)
-
-        # AI summary
-        summary = ai_result.get("summary")
-        if summary:
-            lines.append(f"\n{t('post.ai_summary_label', lang)}\n{summary}")
-
-        # AI translation
-        translation = ai_result.get("translation")
-        if translation:
-            sep = "─" * 16
-            if user.ai_show_original:
-                lines.append(f"\n{sep}\n{t('post.ai_translation_label', lang)}\n{translation}")
-            else:
-                # Replace content with translation
-                lines = [f"<b>{platform_label}</b>", f"📌 {account.display_name}"]
-                if date_str:
-                    lines.append(f"🕐 {date_str}")
-                lines.append("")
-                lines.append(translation)
-
-        lines.append(spam_line)
-        lines.append(ai_cat_line)
+        footer_text = ""
 
         # Footer (every N posts) — counter persisted in Redis so it survives restarts
         if user.footer_enabled:
@@ -520,10 +498,19 @@ class BasePlatformFetcher(ABC):
                 user.footer_post_counter = (user.footer_post_counter or 0) + 1
                 new_count = user.footer_post_counter
             if new_count % cfg.rate_limit.footer_every_n_posts == 1:
-                footer = t("post.footer", lang, bot_username=cfg.telegram.username)
-                lines.append(f"\n{'─' * 16}\n{footer}")
+                footer_text = t("post.footer", lang, bot_username=cfg.telegram.username)
 
-        return "\n".join(l for l in lines if l is not None)
+        # Call the new v2.0 builder
+        caption = build_caption(
+            post=post,
+            platform=account.platform.value,
+            lang=lang,
+            account_display_name=account.display_name or "",
+            ai_result=ai_result,
+            footer=footer_text,
+        )
+
+        return caption
 
     # ── Error Tracking ───────────────────────
 
