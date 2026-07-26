@@ -256,7 +256,8 @@ async def _handle_waiting_for(update, context, user, waiting_for, text) -> bool:
         context.user_data.pop("waiting_for", None)
         return False
 
-    context.user_data.pop("waiting_for", None)
+    if waiting_for != "ai_chat":
+        context.user_data.pop("waiting_for", None)
 
     if waiting_for == "ai_translate_lang":
         code, display = _resolve_language_name(text)
