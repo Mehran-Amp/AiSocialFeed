@@ -167,7 +167,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await show_bookmarks(update, context)
         return
 
-    if text == updates_label:
+    if text == updates_label or text == "🔄 بروزرسانی" or text == "🔄 Updates":
         if user.plan == PlanType.FREE:
             msg = "🔒 این گزینه فقط برای کاربران Pro و Premium فعال است." if fa else "🔒 This option is only enabled for Pro and Premium users."
             await update.message.reply_text(msg)

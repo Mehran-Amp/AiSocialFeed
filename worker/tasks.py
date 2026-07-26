@@ -20,10 +20,6 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
     try:
         async def _init_and_dispose():
             await init_db()
-            from telegram import Bot
-            from config.settings import config as cfg
-            from bot.utils.telegram_utils import set_bot
-            set_bot(Bot(token=cfg.telegram.token))
             await close_db()
 
         asyncio.run(_init_and_dispose())
@@ -147,6 +143,10 @@ celery_app.conf.update(
 
 
 def _run(coro):
+    from telegram import Bot
+    from config.settings import config as cfg
+    from bot.utils.telegram_utils import set_bot
+    set_bot(Bot(token=cfg.telegram.token))
     """Run async coroutine in Celery task."""
     loop = asyncio.new_event_loop()
     try:
@@ -155,6 +155,8 @@ def _run(coro):
         from bot.database import close_db
         try:
             loop.run_until_complete(close_db())
+            from bot.cache import close_redis
+            loop.run_until_complete(close_redis())
         except Exception as e:
             logger.warning(f"Error closing DB in _run: {e}")
         loop.close()
