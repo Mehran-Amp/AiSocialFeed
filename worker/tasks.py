@@ -15,6 +15,10 @@ from celery.signals import worker_process_init
 
 @worker_process_init.connect
 def _setup_db_on_worker_start(sender=None, **kwargs):
+    from telegram import Bot
+    from config.settings import config as cfg
+    from bot.utils.telegram_utils import set_bot
+    set_bot(Bot(token=cfg.telegram.token))
     """Run init_db() once per worker process, not per task."""
     from bot.database import init_db, close_db
     try:
@@ -143,10 +147,6 @@ celery_app.conf.update(
 
 
 def _run(coro):
-    from telegram import Bot
-    from config.settings import config as cfg
-    from bot.utils.telegram_utils import set_bot
-    set_bot(Bot(token=cfg.telegram.token))
     """Run async coroutine in Celery task."""
     loop = asyncio.new_event_loop()
     try:
