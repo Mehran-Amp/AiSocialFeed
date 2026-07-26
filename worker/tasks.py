@@ -20,6 +20,10 @@ def _setup_db_on_worker_start(sender=None, **kwargs):
     try:
         async def _init_and_dispose():
             await init_db()
+            from telegram import Bot
+            from config.settings import config as cfg
+            from bot.utils.telegram_utils import set_bot
+            set_bot(Bot(token=cfg.telegram.token))
             await close_db()
 
         asyncio.run(_init_and_dispose())

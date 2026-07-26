@@ -127,19 +127,7 @@ async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:Us
         plan=_plan_str(user)
         from bot.handlers.video import _encode_url
         for post, platform in posts:
-            from bot.platforms.base import FetchedPost
-            from bot.services.post_formatter import build_caption
-            fp = FetchedPost(
-                post_id=post.post_id or '',
-                title=post.title or '',
-                url=post.url or '',
-                published_at=post.published_at,
-                description=post.title,
-                author=post.author,
-                duration=post.duration,
-                stats_json=post.stats_json
-            )
-            text = build_caption(fp, platform.value if platform else 'rss', lang)
+            text=f"<b>{post.title or ''}</b>\n{post.url or ''}"
             url_key = _encode_url(post.url) if post.url else str(post.id)
             kb=post_buttons(
                 platform=platform.value if platform else "",
