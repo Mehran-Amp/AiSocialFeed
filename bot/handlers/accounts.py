@@ -109,7 +109,7 @@ async def _trigger_background_fetches(user_id:int) -> None:
             from sqlalchemy import select
             ids=(await s.execute(select(Account.id).where(Account.user_id==user_id,Account.is_active==True))).scalars().all()
         from worker.tasks import fetch_account_task
-        for acc_id in ids: fetch_account_task.delay(acc_id)
+        for acc_id in ids: fetch_account_task.apply_async(args=[acc_id], queue='platforms')
     except Exception as e: logger.warning(f"[updates] bg fetch failed: {e}")
 
 # ── 🔄 HYBRID UPDATES ─────────────────────────────────────────────────────────
@@ -127,7 +127,19 @@ async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:Us
         plan=_plan_str(user)
         from bot.handlers.video import _encode_url
         for post, platform in posts:
-            text=f"<b>{post.title or ''}</b>\n{post.url or ''}"
+            from bot.platforms.base import FetchedPost
+            from bot.services.post_formatter import build_caption
+            fp = FetchedPost(
+                post_id=post.post_id or '',
+                title=post.title or '',
+                url=post.url or '',
+                published_at=post.published_at,
+                description=post.title,
+                author=post.author,
+                duration=post.duration,
+                stats_json=post.stats_json
+            )
+            text = build_caption(fp, platform.value if platform else 'rss', lang)
             url_key = _encode_url(post.url) if post.url else str(post.id)
             kb=post_buttons(
                 platform=platform.value if platform else "",
@@ -334,7 +346,7 @@ async def receive_link(update:Update,context:ContextTypes.DEFAULT_TYPE)->int:
         "✅ <b>"+("اکانت اضافه شد!" if f else "Account added!")+"</b>\n"+f"<b>{account.display_name}</b>",
         parse_mode=ParseMode.HTML,reply_markup=main_menu(lang,_plan_str(user),_is_admin(context),new_count))
     try:
-        from worker.tasks import fetch_account_task; fetch_account_task.delay(account.id)
+        from worker.tasks import fetch_account_task; fetch_account_task.apply_async(args=[account.id], queue='platforms')
     except Exception as e: logger.warning(f"Queue failed: {e}")
     context.user_data.pop("adding_platform",None); context.user_data.pop("adding_raw",None)
     return ConversationHandler.END

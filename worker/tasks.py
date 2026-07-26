@@ -288,7 +288,7 @@ def schedule_pending_fetches() -> dict:
 
         # Spread window: 25 minutes = 1,500 seconds
         # Small loads (<50 accounts) fire immediately - no need to spread
-        SPREAD_WINDOW = 25 * 60  # seconds
+        SPREAD_WINDOW = 14 * 60  # seconds
 
         for i, acc_id in enumerate(due_accounts):
             if total <= 50:
@@ -302,7 +302,7 @@ def schedule_pending_fetches() -> dict:
                 countdown=delay,
             )
 
-        spread_info = "immediate" if total <= 50 else f"spread over 25 min"
+        spread_info = "immediate" if total <= 50 else f"spread over 14 min"
         logger.info(f"Scheduled {total} account fetches ({spread_info}).")
         return {"scheduled": total, "spread": total > 50}
 
