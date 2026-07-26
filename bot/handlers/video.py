@@ -378,47 +378,55 @@ def build_post_buttons_with_video(
     lang: str,
 ) -> InlineKeyboardMarkup:
     """
-    Build buttons for a post.
-    Row 1: View original
-    Row 2: Download link + Audio (if video)
-    Row 3: Download file (premium) + Bookmark
+    Build buttons for a post matching Developer Style Reference.
+    Free: [🔗 View] [🔖 Save]
+    Pro: [⬇️ Link] [🎵 Audio] [🔗 View] [🔖 Save]
+    Premium: [⬇️ Link] [📥 File] [🎵 Audio] [🔗 View] [🔖 Save]
     """
+    from bot.handlers.bookmarks import make_bookmark_button
     url_key = _encode_url(original_url)
-    buttons = []
 
-    # Row 1: View original (always)
-    buttons.append([InlineKeyboardButton(
-        t("post.view_original", lang),
-        url=original_url,
-    )])
+    # We build everything into a single list of buttons, and we chunk them into rows later if needed
+    # but the style guide wants them grouped.
+    # Let's put media actions on row 1, and generic actions on row 2 (or all on one row if few)
+    media_buttons = []
 
     if has_video:
-        row2 = []
-        # Download link quality selector (all plans)
-        row2.append(InlineKeyboardButton(
-            "⬇️ لینک دانلود" if lang == "fa" else "⬇️ Download Link",
-            callback_data=f"vq:{url_key}",
-        ))
-        # Audio only (all plans)
-        row2.append(InlineKeyboardButton(
-            "🎵 فقط صدا" if lang == "fa" else "🎵 Audio Only",
-            callback_data=f"vaudio:{url_key}",
-        ))
-        buttons.append(row2)
+        if user.plan in (PlanType.PRO, PlanType.PREMIUM):
+            # Pro/Premium get download links
+            media_buttons.append(InlineKeyboardButton(
+                "⬇️ Link" if lang != "fa" else "⬇️ لینک",
+                callback_data=f"vq:{url_key}",
+            ))
 
-        # Premium: actual file download
         if user.plan == PlanType.PREMIUM:
-            buttons.append([InlineKeyboardButton(
-                "📥 دانلود فایل" if lang == "fa" else "📥 Download File",
+            # Premium gets actual file
+            media_buttons.append(InlineKeyboardButton(
+                "📥 File" if lang != "fa" else "📥 فایل",
                 callback_data=f"vdl:{url_key}",
-            )])
+            ))
 
-    # Bookmark button (all plans, all posts)
-    from bot.handlers.bookmarks import make_bookmark_button
-    buttons.append([make_bookmark_button(platform, url_key, lang)])
+        if user.plan in (PlanType.PRO, PlanType.PREMIUM):
+            # Pro/Premium get Audio
+            media_buttons.append(InlineKeyboardButton(
+                "🎵 Audio" if lang != "fa" else "🎵 صدا",
+                callback_data=f"vaudio:{url_key}",
+            ))
 
-    return InlineKeyboardMarkup(buttons)
+    generic_buttons = [
+        InlineKeyboardButton(
+            "🔗 View" if lang != "fa" else "🔗 مشاهده",
+            url=original_url,
+        ),
+        make_bookmark_button(platform, url_key, lang)
+    ]
 
+    rows = []
+    if media_buttons:
+        rows.append(media_buttons)
+    rows.append(generic_buttons)
+
+    return InlineKeyboardMarkup(rows)
 
 def should_preview_url(platform: str, url: str) -> bool:
     """

@@ -239,7 +239,7 @@ class YouTubeFetcher(BasePlatformFetcher):
                 title=entry.get("title", "No title"),
                 url=url,
                 published_at=_parse_date(entry),
-                description=_strip_html(entry.get("summary", ""))[:500],
+                description=_strip_html(entry.get("summary", "")),
                 image_url=thumbnail,
                 has_video=True,
                 author=entry.get("author", account.display_name),
@@ -375,7 +375,7 @@ class LinkedInFetcher(BasePlatformFetcher):
                 title=_strip_html(entry.get("title", ""))[:256],
                 url=entry_url,
                 published_at=_parse_date(entry),
-                description=_strip_html(entry.get("summary", ""))[:500],
+                description=_strip_html(entry.get("summary", "")),
                 image_url=_entry_image(entry),
             ))
         return FetchResult(posts=posts)

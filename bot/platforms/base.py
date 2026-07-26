@@ -403,110 +403,96 @@ class BasePlatformFetcher(ABC):
         post: FetchedPost,
         ai_result: dict,
     ) -> str:
-        """Format a post for Telegram HTML delivery."""
+        """Format a post for Telegram HTML delivery according to Developer Style."""
         from bot.utils.translator import t
 
         lang = user.language
 
-        # Platform emoji + name
+        # Platform emoji + name mapping matching the Dev Style Guide
         platform_icons = {
-            "youtube":   "🎬 YouTube",
-            "twitter":   "🐦 Twitter/X",
+            "youtube":   "▶️ YouTube",
+            "twitter":   "𝕏 Twitter",
             "instagram": "📸 Instagram",
-            "rss":       "📡 RSS",
             "tiktok":    "🎵 TikTok",
+            "facebook":  "f Facebook",
             "linkedin":  "💼 LinkedIn",
             "reddit":    "🤖 Reddit",
-            "telegram":  "✈️ Telegram",
+            "discord":   "💬 Discord",
+            "telegram":  "📢 Forwarded from",
             "bluesky":   "🦋 Bluesky",
             "mastodon":  "🐘 Mastodon",
             "threads":   "🧵 Threads",
-            "facebook":  "👥 Facebook",
-            "discord":   "🎮 Discord",
+            "rss":       "📡 RSS",
         }
-        platform_label = platform_icons.get(account.platform.value, account.platform.value.capitalize())
 
-        # Category name
-        category_line = ""
-        if account.category_id:
-            # Category name resolved at call time — passed via extra or fetched
-            cat_name = post.extra.get("category_name")
-            if cat_name:
-                category_line = f"📁 {cat_name}\n"
+        platform_id = account.platform.value
+        platform_label = platform_icons.get(platform_id, platform_id.capitalize())
 
-        # Date
-        date_str = ""
-        if post.published_at:
-            date_str = post.published_at.strftime("%Y-%m-%d %H:%M:%S")
+        # Build the header
+        header = f"<b>{platform_label} — {account.display_name}</b>"
 
-        # Spam tag
-        spam_line = ""
-        is_spam = ai_result.get("is_spam", False)
-        if is_spam:
-            spam_line = f"\n{t('post.spam_tag', lang)}"
+        # Add handle if not RSS/Facebook
+        if platform_id not in ("rss", "facebook") and account.identifier:
+            if not account.identifier.startswith("http"):
+                header += f" <code>@{account.identifier}</code>"
 
-        # AI category
-        ai_cat_line = ""
-        ai_cat = ai_result.get("category")
-        if ai_cat:
-            ai_cat_line = f"\n🏷 {ai_cat.capitalize()}"
+        # Content blocks
+        lines = [header, ""]
 
-        # Main content
-        lines = [
-            f"<b>{platform_label}</b>",
-            category_line,
-            f"📌 {account.display_name}",
-        ]
-        if date_str:
-            lines.append(f"🕐 {date_str}")
+        # Post Title
+        if post.title and post.title.lower() != "no title":
+            lines.append(f"<b>{post.title}</b>")
+            lines.append("")
+
+        body_text = post.description or ""
+
+        # If AI translation was performed
+        if ai_result.get("translation"):
+            body_text = ai_result["translation"]
+
+        # If AI summary was performed
+        if ai_result.get("summary"):
+            summary_prefix = "🤖 <b>Summary:</b>"
+            body_text = f"{summary_prefix} {ai_result['summary']}\n\n{body_text}"
+
+        # Truncate body_text safely to avoid cutting off HTML tags at the end of the message
+        # Telegram limit is 4096 (text) or 1024 (caption). We'll assume the worst-case (media caption)
+        # is handled by the caller text[:1024], but for the plain text we'll cap the body at 3500 chars
+        # to leave room for headers, footers, and links.
+        if len(body_text) > 3500:
+            body_text = body_text[:3500] + "..."
+
+        if body_text:
+            lines.append(body_text.strip())
+
         lines.append("")
-        lines.append(f"<b>{post.title}</b>")
 
-        # Description (truncated)
-        if post.description and len(post.description) > 50:
-            desc = post.description[:400]
-            if len(post.description) > 400:
-                desc += "..."
-            lines.append(desc)
+        # Spam tag (if enabled)
+        if ai_result.get("is_spam"):
+            lines.append(f"⚠️ {t('post.spam_tag', lang)}")
 
-        # AI summary
-        summary = ai_result.get("summary")
-        if summary:
-            lines.append(f"\n{t('post.ai_summary_label', lang)}\n{summary}")
-
-        # AI translation
-        translation = ai_result.get("translation")
-        if translation:
-            sep = "─" * 16
-            if user.ai_show_original:
-                lines.append(f"\n{sep}\n{t('post.ai_translation_label', lang)}\n{translation}")
-            else:
-                # Replace content with translation
-                lines = [f"<b>{platform_label}</b>", f"📌 {account.display_name}"]
-                if date_str:
-                    lines.append(f"🕐 {date_str}")
-                lines.append("")
-                lines.append(translation)
-
-        lines.append(spam_line)
-        lines.append(ai_cat_line)
+        # Add URL at the bottom
+        if post.url:
+            lines.append(f"🔗 <a href=\"{post.url}\">{post.url}</a>")
 
         # Footer (every N posts) — counter persisted in Redis so it survives restarts
         if user.footer_enabled:
             from config.settings import config as cfg
             try:
-                r = await _get_footer_redis()
+                from bot.cache import get_redis
+                r = await get_redis()
                 counter_key = f"footer_counter:{user.id}"
                 new_count = await r.incr(counter_key)
             except Exception:
                 # Redis unavailable — fall back to in-memory counter
-                user.footer_post_counter = (user.footer_post_counter or 0) + 1
+                user.footer_post_counter = getattr(user, 'footer_post_counter', 0) or 0
+                user.footer_post_counter += 1
                 new_count = user.footer_post_counter
             if new_count % cfg.rate_limit.footer_every_n_posts == 1:
                 footer = t("post.footer", lang, bot_username=cfg.telegram.username)
                 lines.append(f"\n{'─' * 16}\n{footer}")
 
-        return "\n".join(l for l in lines if l is not None)
+        return "\n".join(l for l in lines if l is not None).strip()
 
     # ── Error Tracking ───────────────────────
 
