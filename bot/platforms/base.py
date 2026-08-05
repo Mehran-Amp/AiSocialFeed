@@ -371,21 +371,6 @@ class BasePlatformFetcher(ABC):
 
         try:
             # If this is a native Telegram post, try to copy it exactly
-            if account.platform.value == "telegram" and post.post_id and post.post_id.isdigit():
-                try:
-                    raw_id = account.identifier.lstrip('@')
-                    # only prepend '@' if it's not a numeric ID
-                    from_chat = raw_id if raw_id.startswith('-') or raw_id.isdigit() else f"@{raw_id}"
-                    await bot.copy_message(
-                        chat_id=target_id,
-                        from_chat_id=from_chat,
-                        message_id=int(post.post_id),
-                        reply_markup=markup
-                    )
-                    return
-                except Exception as ex:
-                    logger.warning(f"Failed to copy native Telegram message {post.post_id}: {ex}")
-                    # Fallback to standard sending below if copy_message fails
 
             if post.video_url:
                 if len(text) > 1024:
@@ -482,7 +467,7 @@ class BasePlatformFetcher(ABC):
                 user.footer_post_counter = (user.footer_post_counter or 0) + 1
                 new_count = user.footer_post_counter
             if new_count % cfg.rate_limit.footer_every_n_posts == 1:
-                footer_text = t("post.footer", lang, bot_username=cfg.telegram.username)
+                footer_text = f"via @{cfg.telegram.username}" if cfg.telegram.username else ""
 
         # Call the new v2.0 builder
         caption = build_caption(
@@ -491,7 +476,7 @@ class BasePlatformFetcher(ABC):
             lang=lang,
             account_display_name=account.display_name or "",
             ai_result=ai_result,
-            footer=footer_text,
+            footer=footer_text
         )
 
         return caption

@@ -380,44 +380,17 @@ def build_post_buttons_with_video(
     """
     Build buttons for a post.
     Row 1: View original
-    Row 2: Download link + Audio (if video)
-    Row 3: Download file (premium) + Bookmark
     """
-    url_key = _encode_url(original_url)
     buttons = []
 
-    # Row 1: View original (always)
+    # Optional upgrade: Add a "🔗 View Original" inline button linking to the original Telegram post URL.
     buttons.append([InlineKeyboardButton(
-        t("post.view_original", lang),
+        "🔗 View Original" if lang != "fa" else "🔗 مشاهده پست اصلی",
         url=original_url,
     )])
 
-    if has_video:
-        row2 = []
-        # Download link quality selector (all plans)
-        row2.append(InlineKeyboardButton(
-            "⬇️ لینک دانلود" if lang == "fa" else "⬇️ Download Link",
-            callback_data=f"vq:{url_key}",
-        ))
-        # Audio only (all plans)
-        row2.append(InlineKeyboardButton(
-            "🎵 فقط صدا" if lang == "fa" else "🎵 Audio Only",
-            callback_data=f"vaudio:{url_key}",
-        ))
-        buttons.append(row2)
-
-        # Premium: actual file download
-        if user.plan == PlanType.PREMIUM:
-            buttons.append([InlineKeyboardButton(
-                "📥 دانلود فایل" if lang == "fa" else "📥 Download File",
-                callback_data=f"vdl:{url_key}",
-            )])
-
-    # Bookmark button (all plans, all posts)
-    from bot.handlers.bookmarks import make_bookmark_button
-    buttons.append([make_bookmark_button(platform, url_key, lang)])
-
     return InlineKeyboardMarkup(buttons)
+
 
 
 def should_preview_url(platform: str, url: str) -> bool:

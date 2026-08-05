@@ -211,62 +211,61 @@ class TelegramChannelFetcher(BasePlatformFetcher):
 
     async def fetch_posts(self, account: Account) -> FetchResult:
         username = account.identifier.lstrip("@")
-        url = f"https://t.me/s/{username}"
+        url = f"{config.rsshub.url}/telegram/channel/{username}"
         try:
-            resp = await _client().get(url)
-            if resp.status_code == 404:
+            feed = await _fetch_rsshub(url)
+            if feed is None:
                 return FetchResult(account_not_found=True)
-            if resp.status_code != 200:
-                return FetchResult(error=f"HTTP {resp.status_code}", platform_down=True)
+            if not feed.entries:
+                return FetchResult(posts=[])
+
+            # The RSSHub feed contains HTML in the description.
+            # We want to preserve the HTML and media correctly.
+            posts = []
+            for entry in reversed(feed.entries[:10]):
+                post_url = entry.get("link", "")
+
+                # Title is usually text, description contains the HTML payload
+                title = entry.get("title", "Message")
+
+                # Description contains the HTML. We do NOT strip HTML this time!
+                description = entry.get("description", "")
+
+                # Check for media enclosures or tags
+                image_url = _entry_image(entry)
+                video_url = _entry_video(entry)
+
+                if not image_url:
+                    m = re.search(r'<img[^>]+src="([^"]+)"', description)
+                    if m:
+                        image_url = m.group(1)
+
+                if not video_url:
+                    m = re.search(r'<video[^>]+src="([^"]+)"', description)
+                    if m:
+                        video_url = m.group(1)
+
+                has_video = bool(video_url) or "video" in description.lower() or "mp4" in description.lower()
+
+                # We save the raw description so post_formatter can use it.
+                # However, feedparser entries might have HTML directly in description.
+                # Let's save it.
+
+                posts.append(FetchedPost(
+                    post_id=entry.get("id") or post_url,
+                    title=_strip_html(title)[:100],
+                    url=post_url,
+                    published_at=_parse_date(entry),
+                    description=description, # preserve HTML
+                    image_url=image_url,
+                    video_url=video_url,
+                    has_video=has_video,
+                    author=account.display_name or username,
+                ))
+            return FetchResult(posts=posts)
         except Exception as e:
+            logger.warning(f"TelegramChannelFetcher RSSHub error: {e}")
             return FetchResult(error=str(e), platform_down=True)
-        posts = self._parse_tme(resp.text, username)
-        return FetchResult(posts=posts)
-
-    def _parse_tme(self, html: str, username: str) -> list:
-        posts = []
-        blocks = re.findall(
-            r'(<div class="tgme_widget_message_wrap[^"]*"[^>]*>.*?</div>\s*</div>\s*</div>)',
-            html, re.DOTALL,
-        )
-        for block in reversed(blocks[-10:]):
-            id_match = re.search(r'data-post="[^/]+/(\d+)"', block)
-            msg_id = id_match.group(1) if id_match else ""
-            post_url = f"https://t.me/{username}/{msg_id}" if msg_id else ""
-            text_match = re.search(
-                r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', block, re.DOTALL
-            )
-            raw_text = text_match.group(1) if text_match else ""
-            raw_text = re.sub(r'<br\s*/?>', '\n', raw_text)
-            text = _strip_html(raw_text)[:4000]
-
-            img_match = re.search(r"background-image:url\('([^']+)'\)", block)
-            image_url = img_match.group(1) if img_match else None
-
-            video_match = re.search(r'<video[^>]+src="([^"]+)"', block)
-            video_url = video_match.group(1) if video_match else None
-
-            has_video = "tgme_widget_message_video" in block or bool(video_url)
-            date_match = re.search(r'datetime="([^"]+)"', block)
-            pub_date = None
-            if date_match:
-                try:
-                    pub_date = datetime.fromisoformat(date_match.group(1))
-                except Exception:
-                    pass
-            if not text and not post_url:
-                continue
-            posts.append(FetchedPost(
-                post_id=msg_id or post_url,
-                title=text[:100] or "Message",
-                url=post_url,
-                published_at=pub_date,
-                description=text,
-                image_url=image_url,
-                video_url=video_url,
-                has_video=has_video,
-            ))
-        return posts
 
 # ─── Registry — ALL platforms registered ─────
 
