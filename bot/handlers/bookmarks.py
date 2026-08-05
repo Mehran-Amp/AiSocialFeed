@@ -25,10 +25,7 @@ logger = logging.getLogger(__name__)
 # BOOKMARK_LIMITS dict removed. Limit check removed from save_bookmark().
 
 PLATFORM_ICONS = {
-    "youtube": "🎬", "twitter": "🐦", "instagram": "📸",
-    "rss": "📡", "tiktok": "🎵", "linkedin": "💼",
-    "reddit": "🤖", "telegram": "✈️", "bluesky": "🦋",
-    "mastodon": "🐘", "threads": "🧵",
+    "telegram": "✈️",
 }
 
 

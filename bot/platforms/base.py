@@ -629,19 +629,7 @@ class BasePlatformFetcher(ABC):
             return
 
         platform_label = {
-            "twitter": "Twitter / X",
-            "instagram": "Instagram",
-            "tiktok": "TikTok",
-            "threads": "Threads",
-            "facebook": "Facebook",
-            "youtube": "YouTube",
-            "reddit": "Reddit",
-            "linkedin": "LinkedIn",
             "telegram": "Telegram",
-            "discord": "Discord",
-            "bluesky": "Bluesky",
-            "mastodon": "Mastodon",
-            "rss": "RSS",
         }.get(account.platform.value, account.platform.value.capitalize())
 
         name = account.display_name or account.identifier

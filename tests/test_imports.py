@@ -42,7 +42,7 @@ def test_rsshub_config_exists():
     from config.settings import RSSHubConfig
     cfg = RSSHubConfig()
     assert hasattr(cfg, "url")
-    assert hasattr(cfg, "cookie_twitter")
+
 
 
 def test_payment_service_exports():

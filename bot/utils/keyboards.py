@@ -11,15 +11,13 @@ from telegram import (
 from bot.utils.translator import t
 
 PLATFORM_EMOJI = {
-    "youtube":"🎬","twitter":"𝕏","instagram":"📸","rss":"📡",
-    "tiktok":"🎵","linkedin":"💼","reddit":"🤖","telegram":"✈️",
-    "bluesky":"🦋","mastodon":"🐘","threads":"🧵","facebook":"👥","discord":"🎮",
+    "telegram":"✈️",
 }
 PLAN_EMOJI  = {"free":"🆓","pro":"⭐️","premium":"💎"}
 PLAN_LABEL  = {"free":"Free","pro":"Pro","premium":"Premium"}
-FREE_PLATFORMS    = {"youtube","twitter","rss","reddit","telegram"}
-PRO_PLATFORMS     = {"instagram","linkedin","threads","bluesky","mastodon"}
-PREMIUM_PLATFORMS = {"tiktok","facebook","discord"}
+FREE_PLATFORMS    = {"telegram"}
+PRO_PLATFORMS     = set()
+PREMIUM_PLATFORMS = set()
 ALL_PLATFORMS     = list(FREE_PLATFORMS|PRO_PLATFORMS|PREMIUM_PLATFORMS)
 AI_TRANSLATE_QUICK = [
     ("🇬🇧","en","English"),("🇪🇸","es","Español"),

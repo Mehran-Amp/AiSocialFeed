@@ -318,7 +318,7 @@ config = Config()
 
 DEFAULT_PLAN_FEATURES = {
     "free": {
-        "platforms": ["youtube", "twitter", "rss", "reddit", "telegram"],
+        "platforms": ["telegram"],
         "max_accounts": 5, "price_monthly": 0.0, "price_yearly": 0.0,
         "stream_video": True,
         "download_link": False, "download_link_qualities": [],
@@ -334,8 +334,7 @@ DEFAULT_PLAN_FEATURES = {
         "upsell_every_n_posts": 50, "early_access": False, "priority_support": False,
     },
     "pro": {
-        "platforms": ["youtube", "twitter", "instagram", "rss", "linkedin",
-                      "reddit", "telegram", "threads", "bluesky", "mastodon"],
+        "platforms": ["telegram"],
         "max_accounts": 40,
         "price_monthly": 6.0, "price_biannual": 28.8, "price_yearly": 57.6,
         "stream_video": True,
@@ -352,8 +351,7 @@ DEFAULT_PLAN_FEATURES = {
         "upsell_every_n_posts": 200, "early_access": False, "priority_support": False,
     },
     "premium": {
-        "platforms": ["youtube", "twitter", "instagram", "rss", "tiktok", "linkedin",
-                      "reddit", "telegram", "threads", "bluesky", "mastodon", "facebook", "discord"],
+        "platforms": ["telegram"],
         "max_accounts": 100,
         "price_monthly": 10.0, "price_biannual": 48.0, "price_yearly": 96.0,
         "stream_video": True,

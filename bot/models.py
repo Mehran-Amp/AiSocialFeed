@@ -34,19 +34,7 @@ class PlanType(str, enum.Enum):
 
 
 class Platform(str, enum.Enum):
-    YOUTUBE = "youtube"
-    TWITTER = "twitter"
-    INSTAGRAM = "instagram"
-    RSS = "rss"
-    TIKTOK = "tiktok"
-    LINKEDIN = "linkedin"
-    REDDIT = "reddit"
     TELEGRAM = "telegram"
-    BLUESKY = "bluesky"
-    MASTODON = "mastodon"
-    THREADS = "threads"
-    FACEBOOK = "facebook"
-    DISCORD = "discord"
 
 
 class TransactionStatus(str, enum.Enum):
@@ -89,13 +77,6 @@ class LogLevel(str, enum.Enum):
 
 class LogModule(str, enum.Enum):
     BOT = "bot"
-    YOUTUBE = "youtube"
-    TWITTER = "twitter"
-    INSTAGRAM = "instagram"
-    RSS = "rss"
-    TIKTOK = "tiktok"
-    LINKEDIN = "linkedin"
-    REDDIT = "reddit"
     TELEGRAM_CH = "telegram_ch"
     AI = "ai"
     PAYMENT = "payment"

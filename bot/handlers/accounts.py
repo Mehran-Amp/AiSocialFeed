@@ -28,25 +28,10 @@ logger = logging.getLogger(__name__)
 WAITING_LINK = 1
 
 PLATFORM_EXAMPLES = {
-    "youtube":"youtube.com/c/channelname  OR  @handle",
-    "twitter":"twitter.com/username  OR  @username",
-    "instagram":"instagram.com/username",
-    "rss":"https://example.com/feed.xml",
-    "tiktok":"tiktok.com/@username",
-    "linkedin":"linkedin.com/company/name",
-    "reddit":"reddit.com/r/subreddit",
-    "telegram":"t.me/channelname",
-    "bluesky":"username.bsky.social",
-    "mastodon":"@username@mastodon.social",
-    "threads":"@username  OR  threads.net/@username",
-    "facebook":"facebook.com/pagename",
-    "discord":"discord.com/channels/server-id/channel-id",
+    "telegram":"https://t.me/channel_name",
 }
 PLATFORM_LABELS = {
-    "youtube":"🎬 YouTube","twitter":"𝕏 Twitter/X","instagram":"📸 Instagram",
-    "rss":"📡 RSS","tiktok":"🎵 TikTok","linkedin":"💼 LinkedIn",
-    "reddit":"🤖 Reddit","telegram":"✈️ Telegram","bluesky":"🦋 Bluesky",
-    "mastodon":"🐘 Mastodon","threads":"🧵 Threads","facebook":"👥 Facebook","discord":"🎮 Discord",
+    "telegram":"✈️ Telegram",
 }
 ALL_PLATFORM_VALUES = list(FREE_PLATFORMS|PRO_PLATFORMS|PREMIUM_PLATFORMS)
 

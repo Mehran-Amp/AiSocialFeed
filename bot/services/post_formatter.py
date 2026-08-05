@@ -22,55 +22,6 @@ from bot.utils.translator import t
 # ============================================================================
 
 PLATFORM_CONFIG = {
-    "youtube": {
-        "badge_text": "YOUTUBE",
-        "badge_color": "#ff0000",
-        "stats_priority": ["views", "likes", "comments"],
-        "cta": "Watch",
-        "cta_fa": "مشاهده",
-    },
-    "twitter": {
-        "badge_text": "X",
-        "badge_color": "#000000",
-        "stats_priority": ["likes", "retweets", "replies"],
-        "cta": "Read",
-        "cta_fa": "خواندن",
-    },
-    "tiktok": {
-        "badge_text": "TIKTOK",
-        "badge_color": "#ff0050",
-        "stats_priority": ["views", "shares", "likes"],
-        "cta": "Watch",
-        "cta_fa": "مشاهده",
-    },
-    "instagram": {
-        "badge_text": "INSTAGRAM",
-        "badge_color": "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
-        "stats_priority": ["likes", "comments", "shares"],
-        "cta": "View",
-        "cta_fa": "مشاهده",
-    },
-    "reddit": {
-        "badge_text": "REDDIT",
-        "badge_color": "#ff4500",
-        "stats_priority": ["upvotes", "comments"],
-        "cta": "View",
-        "cta_fa": "مشاهده",
-    },
-    "linkedin": {
-        "badge_text": "LINKEDIN",
-        "badge_color": "#0a66c2",
-        "stats_priority": ["reactions", "comments"],
-        "cta": "Read",
-        "cta_fa": "خواندن",
-    },
-    "rss": {
-        "badge_text": "RSS",
-        "badge_color": "#3390ec",
-        "stats_priority": [],
-        "cta": "Read",
-        "cta_fa": "خواندن",
-    },
 }
 
 # Alias for missing ones
