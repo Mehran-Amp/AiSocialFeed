@@ -427,8 +427,7 @@ def should_preview_url(platform: str, url: str) -> bool:
     RSS, LinkedIn = False (clutters the chat).
     """
     preview_platforms = {
-        "youtube", "twitter", "instagram",
-        "tiktok", "reddit", "telegram",
+        "telegram",
     }
     return platform.lower() in preview_platforms
 

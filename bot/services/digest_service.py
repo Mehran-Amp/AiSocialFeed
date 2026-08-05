@@ -47,9 +47,7 @@ async def generate_digest(user_id: int, lang: str, hours: int = 24) -> str | Non
     period = f"{hours}h" if hours < 24 else "24h"
 
     platform_icons = {
-        "youtube": "🎬", "twitter": "🐦", "instagram": "📸",
-        "rss": "📡", "tiktok": "🎵", "linkedin": "💼",
-        "reddit": "🤖", "telegram": "✈️",
+        "telegram": "✈️",
     }
 
     lines = [

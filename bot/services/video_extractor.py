@@ -186,16 +186,7 @@ def format_filesize(mb: Optional[float]) -> str:
 # ─────────────────────────────────────────────
 
 VIDEO_PLATFORMS = {
-    "youtube.com", "youtu.be",
-    "twitter.com", "x.com", "t.co",
-    "instagram.com",
-    "tiktok.com",
-    "reddit.com", "redd.it",
-    "linkedin.com",
-    "facebook.com", "fb.com",
-    "vimeo.com",
-    "dailymotion.com",
-    "twitch.tv",
+    "t.me", "telegram.me",
 }
 
 

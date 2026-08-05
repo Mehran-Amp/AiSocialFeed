@@ -26,31 +26,13 @@ logger = logging.getLogger(__name__)
 
 # ─── Plan → Platform Access ───────────────────
 PLAN_PLATFORMS = {
-    "free": [Platform.YOUTUBE, Platform.TWITTER, Platform.RSS,
-             Platform.REDDIT, Platform.TELEGRAM],
-    "pro":  [Platform.YOUTUBE, Platform.TWITTER, Platform.RSS, Platform.REDDIT,
-             Platform.TELEGRAM, Platform.INSTAGRAM, Platform.LINKEDIN,
-             Platform.THREADS, Platform.BLUESKY, Platform.MASTODON],
-    "premium": [Platform.YOUTUBE, Platform.TWITTER, Platform.RSS, Platform.REDDIT,
-                Platform.TELEGRAM, Platform.INSTAGRAM, Platform.LINKEDIN,
-                Platform.THREADS, Platform.BLUESKY, Platform.MASTODON,
-                Platform.TIKTOK, Platform.FACEBOOK, Platform.DISCORD],
+    "free": [Platform.TELEGRAM],
+    "pro":  [Platform.TELEGRAM],
+    "premium": [Platform.TELEGRAM],
 }
 
 PLATFORM_LABELS = {
-    Platform.YOUTUBE:   "🎬 YouTube",
-    Platform.TWITTER:   "🐦 Twitter/X",
-    Platform.INSTAGRAM: "📸 Instagram",
-    Platform.RSS:       "📡 RSS",
-    Platform.TIKTOK:    "🎵 TikTok",
-    Platform.LINKEDIN:  "💼 LinkedIn",
-    Platform.REDDIT:    "🤖 Reddit",
     Platform.TELEGRAM:  "✈️ Telegram",
-    Platform.BLUESKY:   "🦋 Bluesky",
-    Platform.MASTODON:  "🐘 Mastodon",
-    Platform.THREADS:   "🧵 Threads",
-    Platform.FACEBOOK:  "👥 Facebook",
-    Platform.DISCORD:   "🎮 Discord",
 }
 
 def get_allowed_platforms(plan: str) -> list:
@@ -221,180 +203,6 @@ def make_instant_view_button(url: str, lang: str = "en"):
     return InlineKeyboardButton(label, url=iv_url)
 
 
-# ─── YouTube (Free) ──────────────────────────
-
-class YouTubeFetcher(BasePlatformFetcher):
-    platform = Platform.YOUTUBE
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        if not account.feed_url:
-            return FetchResult(error="No feed URL")
-        try:
-            feed = await _fetch_feed(account.feed_url)
-        except Exception as e:
-            return FetchResult(error=str(e), platform_down=True)
-        if feed is None:
-            return FetchResult(account_not_found=True)
-        posts = []
-        for entry in feed.entries[:10]:
-            url = entry.get("link", "")
-            if not url:
-                continue
-            video_id = entry.get("yt_videoid", "")
-            thumbnail = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg" if video_id else None
-            posts.append(FetchedPost(
-                post_id=entry.get("id") or url,
-                title=entry.get("title", "No title"),
-                url=url,
-                published_at=_parse_date(entry),
-                description=_strip_html(entry.get("summary", ""))[:4000],
-                image_url=thumbnail,
-                video_url=None,
-                has_video=True,
-                author=entry.get("author", account.display_name),
-            ))
-        return FetchResult(posts=posts)
-
-# ─── RSS (Free) ──────────────────────────────
-
-class RSSFetcher(BasePlatformFetcher):
-    platform = Platform.RSS
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        url = account.feed_url or account.identifier
-        try:
-            feed = await _fetch_feed(url)
-        except Exception as e:
-            return FetchResult(error=str(e), platform_down=True)
-        if feed is None:
-            return FetchResult(account_not_found=True)
-        if not feed.get("version") and not feed.entries:
-            return FetchResult(error="Not a valid RSS feed")
-        posts = []
-        for entry in feed.entries[:15]:
-            post_url = entry.get("link", "") or entry.get("id", "")
-            summary = entry.get("summary", "") or entry.get("description", "")
-            has_video = any(
-                enc.get("type", "").startswith("video/")
-                for enc in getattr(entry, "enclosures", [])
-            )
-            video_url = _entry_video(entry)
-            posts.append(FetchedPost(
-                post_id=entry.get("id") or post_url,
-                title=entry.get("title", "No title")[:256],
-                url=post_url,
-                published_at=_parse_date(entry),
-                description=_strip_html(summary)[:4000],
-                image_url=_entry_image(entry),
-                video_url=video_url,
-                has_video=has_video or bool(video_url),
-                author=entry.get("author", ""),
-            ))
-        return FetchResult(posts=posts)
-
-# ─── Reddit (Free) ───────────────────────────
-
-class RedditFetcher(BasePlatformFetcher):
-    platform = Platform.REDDIT
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        url = f"https://old.reddit.com/r/{account.identifier}/.rss"
-        try:
-            feed = await _fetch_feed(url)
-        except Exception as e:
-            return FetchResult(error=str(e), platform_down=True)
-        if feed is None:
-            return FetchResult(account_private=True)
-        posts = []
-        for entry in feed.entries[:10]:
-            entry_url = entry.get("link", "")
-            summary = _strip_html(entry.get("summary", ""))[:4000]
-            video_url = _entry_video(entry)
-            has_video = "v.redd.it" in entry_url or "v.redd.it" in summary or bool(video_url)
-            posts.append(FetchedPost(
-                post_id=entry.get("id") or entry_url,
-                title=entry.get("title", "")[:256],
-                url=entry_url,
-                published_at=_parse_date(entry),
-                description=summary,
-                image_url=_entry_image(entry),
-                video_url=video_url,
-                has_video=has_video,
-                author=entry.get("author", ""),
-            ))
-        return FetchResult(posts=posts)
-
-# ─── Twitter/X (Free) — via self-hosted RSSHub ──
-
-class TwitterFetcher(BasePlatformFetcher):
-    platform = Platform.TWITTER
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        url = f"{config.rsshub.url}/twitter/user/{account.identifier}"
-        try:
-            feed = await _fetch_rsshub(url)
-            if feed and feed.entries:
-                posts = _parse_entries(feed)
-                for p in posts:
-                    if any(kw in (p.description or "").lower() for kw in ["video", "gif", "mp4"]):
-                        p.has_video = True
-                return FetchResult(posts=posts)
-            return FetchResult(error="No posts returned", platform_down=True)
-        except Exception as e:
-            logger.warning(f"TwitterFetcher error: {e}")
-            return FetchResult(error=str(e), platform_down=True)
-
-# ─── Instagram (Pro) — via self-hosted RSSHub ──
-
-class InstagramFetcher(BasePlatformFetcher):
-    platform = Platform.INSTAGRAM
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        url = f"{config.rsshub.url}/instagram/user/{account.identifier}"
-        try:
-            feed = await _fetch_rsshub(url)
-            if feed and feed.entries:
-                posts = _parse_entries(feed)
-                for p in posts:
-                    if "/reel/" in (p.url or ""):
-                        p.has_video = True
-                return FetchResult(posts=posts)
-            return FetchResult(error="No posts returned", platform_down=True)
-        except Exception as e:
-            logger.warning(f"InstagramFetcher error: {e}")
-            return FetchResult(error=str(e), platform_down=True)
-
-# ─── LinkedIn (Pro) — direct RSS ─────────────
-
-class LinkedInFetcher(BasePlatformFetcher):
-    platform = Platform.LINKEDIN
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        # LinkedIn removed their public RSS in 2020 — route via RSSHub.
-        # Must use _fetch_rsshub (not _fetch_feed) so cookie/session headers
-        # are injected; otherwise RSSHub returns 403.
-        url = f"{config.rsshub.url}/linkedin/company/{account.identifier}"
-        try:
-            feed = await _fetch_rsshub(url)
-        except Exception as e:
-            return FetchResult(error=str(e), platform_down=True)
-        if feed is None:
-            return FetchResult(account_not_found=True)
-        posts = []
-        for entry in feed.entries[:10]:
-            entry_url = entry.get("link", "")
-            video_url = _entry_video(entry)
-            posts.append(FetchedPost(
-                post_id=entry.get("id") or entry_url,
-                title=_strip_html(entry.get("title", ""))[:256],
-                url=entry_url,
-                published_at=_parse_date(entry),
-                description=_strip_html(entry.get("summary", ""))[:4000],
-                image_url=_entry_image(entry),
-                video_url=video_url,
-                has_video=bool(video_url),
-            ))
-        return FetchResult(posts=posts)
 
 # ─── Telegram Channel (Free) ─────────────────
 
@@ -428,8 +236,6 @@ class TelegramChannelFetcher(BasePlatformFetcher):
             text_match = re.search(
                 r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', block, re.DOTALL
             )
-            # Full text without HTML, keep formatting by converting <br> to newlines? Strip_html removes all tags.
-            # _strip_html removes all <...>. Let's keep replacing <br> with newline first.
             raw_text = text_match.group(1) if text_match else ""
             raw_text = re.sub(r'<br\s*/?>', '\n', raw_text)
             text = _strip_html(raw_text)[:4000]
@@ -437,7 +243,6 @@ class TelegramChannelFetcher(BasePlatformFetcher):
             img_match = re.search(r"background-image:url\('([^']+)'\)", block)
             image_url = img_match.group(1) if img_match else None
 
-            # Find video URL if available in the page
             video_match = re.search(r'<video[^>]+src="([^"]+)"', block)
             video_url = video_match.group(1) if video_match else None
 
@@ -463,225 +268,10 @@ class TelegramChannelFetcher(BasePlatformFetcher):
             ))
         return posts
 
-# ─── TikTok (Premium) — via self-hosted RSSHub ──
-
-class TikTokFetcher(BasePlatformFetcher):
-    platform = Platform.TIKTOK
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        username = account.identifier.lstrip("@")
-        url = f"{config.rsshub.url}/tiktok/user/@{username}"
-        try:
-            feed = await _fetch_rsshub(url)
-            if feed and feed.entries:
-                posts = _parse_entries(feed)
-                for p in posts:
-                    p.has_video = True  # TikTok is always video
-                return FetchResult(posts=posts)
-            return FetchResult(error="No posts returned", platform_down=True)
-        except Exception as e:
-            logger.warning(f"TikTokFetcher error: {e}")
-            return FetchResult(error=str(e), platform_down=True)
-
-# ─── Threads (Pro) — via self-hosted RSSHub ──
-
-class ThreadsFetcher(BasePlatformFetcher):
-    platform = Platform.THREADS
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        url = f"{config.rsshub.url}/threads/user/{account.identifier}"
-        try:
-            feed = await _fetch_rsshub(url)
-            if feed and feed.entries:
-                return FetchResult(posts=_parse_entries(feed))
-            return FetchResult(error="No posts returned", platform_down=True)
-        except Exception as e:
-            logger.warning(f"ThreadsFetcher error: {e}")
-            return FetchResult(error=str(e), platform_down=True)
-
-# ─── Bluesky (Pro) — official public API ─────
-
-class BlueskyFetcher(BasePlatformFetcher):
-    platform = Platform.BLUESKY
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        handle = account.identifier.lstrip("@")
-        url = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed"
-        params = {"actor": handle, "limit": 10, "filter": "posts_no_replies"}
-        try:
-            resp = await _client().get(url, params=params)
-            if resp.status_code == 404:
-                return FetchResult(account_not_found=True)
-            if resp.status_code != 200:
-                return FetchResult(error=f"HTTP {resp.status_code}", platform_down=True)
-            data = resp.json()
-        except Exception as e:
-            return FetchResult(error=str(e), platform_down=True)
-
-        posts = []
-        for item in data.get("feed", []):
-            post = item.get("post", {})
-            record = post.get("record", {})
-            author = post.get("author", {})
-            uri = post.get("uri", "")
-            rkey = uri.split("/")[-1] if uri else ""
-            post_handle = author.get("handle", handle)
-            post_url = f"https://bsky.app/profile/{post_handle}/post/{rkey}" if rkey else ""
-            text = record.get("text", "")[:4000]
-            embed = post.get("embed", {})
-            image_url = None
-            has_video = False
-            embed_type = embed.get("$type", "")
-            if "images" in embed_type:
-                images = embed.get("images", [])
-                if images:
-                    image_url = images[0].get("thumb", "")
-            elif "video" in embed_type:
-                has_video = True
-                image_url = embed.get("thumbnail", "")
-            created_at = record.get("createdAt", "")
-            pub_date = None
-            if created_at:
-                try:
-                    pub_date = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                except Exception:
-                    pass
-            if not post_url:
-                continue
-            posts.append(FetchedPost(
-                post_id=uri or post_url,
-                title=text[:100] or "Post",
-                url=post_url,
-                published_at=pub_date,
-                description=text,
-                image_url=image_url,
-                video_url=None,
-                has_video=has_video,
-                author=author.get("displayName") or post_handle,
-            ))
-        return FetchResult(posts=posts)
-
-# ─── Mastodon (Pro) — direct RSS ─────────────
-
-class MastodonFetcher(BasePlatformFetcher):
-    platform = Platform.MASTODON
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        feed_url = self._build_feed_url(account.identifier)
-        if not feed_url:
-            return FetchResult(error="Invalid Mastodon identifier")
-        try:
-            feed = await _fetch_feed(feed_url)
-        except Exception as e:
-            return FetchResult(error=str(e), platform_down=True)
-        if feed is None:
-            return FetchResult(account_not_found=True)
-        posts = []
-        for entry in feed.entries[:10]:
-            entry_url = entry.get("link", "")
-            summary = entry.get("summary", "")
-            clean = _strip_html(summary)[:4000]
-            image_url = _entry_image(entry)
-            video_url = _entry_video(entry)
-            if not image_url:
-                m = re.search(r'<img[^>]+src="([^"]+)"', summary)
-                if m:
-                    image_url = m.group(1)
-            has_video = "video" in summary.lower() or bool(video_url)
-            posts.append(FetchedPost(
-                post_id=entry.get("id") or entry_url,
-                title=clean[:100] or "Post",
-                url=entry_url,
-                published_at=_parse_date(entry),
-                description=clean,
-                image_url=image_url,
-                video_url=video_url,
-                has_video=has_video,
-                author=account.display_name,
-            ))
-        return FetchResult(posts=posts)
-
-    def _build_feed_url(self, identifier: str) -> Optional[str]:
-        raw = identifier.strip().lstrip("@")
-        at_pos = raw.find("@")
-        slash_pos = raw.find("/")
-        is_user_at_instance = (
-            "@" in raw and
-            not raw.startswith("http") and
-            (slash_pos == -1 or at_pos < slash_pos)
-        )
-        if is_user_at_instance:
-            parts = raw.split("@", 1)
-            if len(parts) == 2 and parts[0] and parts[1]:
-                username, instance = parts
-                return f"https://{instance}/@{username}.rss"
-        if "http" in raw or "/" in raw:
-            if not raw.startswith("http"):
-                raw = f"https://{raw}"
-            parsed = urlparse(raw)
-            path = parsed.path.strip("/")
-            if path.startswith("@"):
-                return f"{parsed.scheme}://{parsed.netloc}/{path}.rss"
-        return None
-
-# ─── Facebook (Premium) — via self-hosted RSSHub ──
-
-class FacebookFetcher(BasePlatformFetcher):
-    platform = Platform.FACEBOOK
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        raw = account.identifier.strip()
-        m = re.search(r'facebook\.com/([^/?\s]+)', raw)
-        page = m.group(1) if m else raw.lstrip("@")
-        try:
-            feed = await _fetch_rsshub(f"{config.rsshub.url}/facebook/page/{page}")
-            if feed is None:
-                return FetchResult(account_not_found=True)
-            return FetchResult(posts=_parse_entries(feed))
-        except Exception as e:
-            return FetchResult(error=str(e)[:200], platform_down=True)
-
-# ─── Discord (Premium) — via self-hosted RSSHub ──
-
-class DiscordFetcher(BasePlatformFetcher):
-    platform = Platform.DISCORD
-
-    async def fetch_posts(self, account: Account) -> FetchResult:
-        raw = account.identifier.strip()
-        m = re.search(r'discord\.com/channels/([0-9]+)/([0-9]+)', raw)
-        if m:
-            server_id, channel_id = m.group(1), m.group(2)
-        elif "/" in raw:
-            parts = raw.split("/", 1)
-            server_id, channel_id = parts[0].strip(), parts[1].strip()
-        else:
-            return FetchResult(error="Format: SERVER_ID/CHANNEL_ID")
-        try:
-            feed = await _fetch_rsshub(
-                f"{config.rsshub.url}/discord/channel/{server_id}/{channel_id}"
-            )
-            if feed is None:
-                return FetchResult(account_not_found=True)
-            return FetchResult(posts=_parse_entries(feed))
-        except Exception as e:
-            return FetchResult(error=str(e)[:200], platform_down=True)
-
 # ─── Registry — ALL platforms registered ─────
 
 PLATFORM_FETCHERS: dict = {
-    Platform.YOUTUBE:   YouTubeFetcher,
-    Platform.TWITTER:   TwitterFetcher,
-    Platform.INSTAGRAM: InstagramFetcher,
-    Platform.RSS:       RSSFetcher,
-    Platform.TIKTOK:    TikTokFetcher,
-    Platform.LINKEDIN:  LinkedInFetcher,
-    Platform.REDDIT:    RedditFetcher,
     Platform.TELEGRAM:  TelegramChannelFetcher,
-    Platform.BLUESKY:   BlueskyFetcher,
-    Platform.MASTODON:  MastodonFetcher,
-    Platform.THREADS:   ThreadsFetcher,
-    Platform.FACEBOOK:  FacebookFetcher,   # ← fixed
-    Platform.DISCORD:   DiscordFetcher,    # ← fixed
 }
 
 def get_fetcher(platform: Platform) -> BasePlatformFetcher:

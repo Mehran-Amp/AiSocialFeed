@@ -143,7 +143,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "account_not_found":
         "❓ این اکانت پیدا نشد. شاید حذف شده یا اسمش عوض شده.",
     "invalid_url":
-        "⚠️ لینک وارد شده معتبر نیست.\nمثال درست: youtube.com/c/channelname",
+        "⚠️ لینک وارد شده معتبر نیست.\nمثال درست: t.me/channelname",
     "rate_limit":
         "⏳ محدودیت موقت API. ربات ۱ ساعت دیگه دوباره تلاش می‌کنه.",
     "platform_down":
