@@ -127,7 +127,7 @@ async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:Us
                 duration=post.duration,
                 stats_json=post.stats_json
             )
-            text = build_caption(fp, platform.value if platform else 'rss', lang)
+            text = build_caption(fp, platform.value if platform else 'telegram', lang)
             url_key = _encode_url(post.url) if post.url else str(post.id)
             kb=post_buttons(
                 platform=platform.value if platform else "",

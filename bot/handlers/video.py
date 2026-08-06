@@ -383,11 +383,11 @@ def build_post_buttons_with_video(
     """
     buttons = []
 
-    # Optional upgrade: Add a "🔗 View Original" inline button linking to the original Telegram post URL.
-    buttons.append([InlineKeyboardButton(
-        "🔗 View Original" if lang != "fa" else "🔗 مشاهده پست اصلی",
-        url=original_url,
-    )])
+    if original_url:
+        buttons.append([InlineKeyboardButton(
+            "🔗 View Original" if lang != "fa" else "🔗 مشاهده پست اصلی",
+            url=original_url,
+        )])
 
     return InlineKeyboardMarkup(buttons)
 

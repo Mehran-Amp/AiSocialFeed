@@ -29,6 +29,9 @@ class FetchedPost:
     description: Optional[str] = None
     image_url: Optional[str] = None
     video_url: Optional[str] = None
+    audio_url: Optional[str] = None
+    document_url: Optional[str] = None
+    animation_url: Optional[str] = None
     has_video: bool = False
     author: Optional[str] = None
     duration: Optional[str] = None

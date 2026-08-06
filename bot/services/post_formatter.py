@@ -58,17 +58,34 @@ def build_caption(
         # but the prompt specifically says "preserving all formatting (bold, links, mentions, HTML/Markdown)".
         # We will assume `description` is already acceptable or we can just pass it directly.
         # Often RSSHub includes <img ...> and <video ...> in description, which Telegram API rejects.
-        import re
-        desc = re.sub(r'<br\s*/?>', '\n', desc)
-        desc = re.sub(r'</p>', '\n\n', desc)
-        desc = re.sub(r'<p[^>]*>', '', desc)
-        desc = re.sub(r'<img[^>]*>', '', desc)
-        desc = re.sub(r'<video[^>]*>.*?</video>', '', desc, flags=re.DOTALL)
-        desc = re.sub(r'<iframe[^>]*>.*?</iframe>', '', desc, flags=re.DOTALL)
+# Sanitize HTML to keep only Telegram-supported tags.
+        from html.parser import HTMLParser
+        class TelegramHTMLParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.result = []
+                self.allowed_tags = {'b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'a', 'code', 'pre', 'blockquote'}
+            def handle_starttag(self, tag, attrs):
+                if tag == 'br':
+                    self.result.append(chr(10))
+                elif tag == 'p':
+                    self.result.append(chr(10) + chr(10))
+                elif tag in self.allowed_tags:
+                    attr_str = "".join([f' {k}="{v}"' for k,v in attrs if k == 'href']) if tag == 'a' else ""
+                    self.result.append(f"<{tag}{attr_str}>")
+            def handle_endtag(self, tag):
+                if tag in self.allowed_tags:
+                    self.result.append(f"</{tag}>")
+            def handle_data(self, data):
+                self.result.append(data)
 
+        parser = TelegramHTMLParser()
+        parser.feed(desc)
+        desc = "".join(parser.result)
+        import re
+        desc = re.sub(r'\n{3,}', '\n\n', desc) # normalize spacing
         if len(desc) > 3500:
             desc = desc[:3500] + "..."
-
         lines.append(desc.strip())
 
     if footer:
