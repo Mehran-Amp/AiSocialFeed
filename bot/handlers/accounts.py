@@ -101,11 +101,14 @@ async def _trigger_background_fetches(user_id:int) -> None:
 async def handle_updates(update:Update,context:ContextTypes.DEFAULT_TYPE,user:User)->None:
     lang=user.language; f=lang=="fa"; now=datetime.now(timezone.utc)
 
+    # Trigger background fetches first so they queue up
+    await _trigger_background_fetches(user.id)
+
     posts = await _fetch_recent_posts(user.id, user.last_feed_viewed_at, now)
     await _update_last_feed_viewed(user.id, now)
 
     if not posts:
-        await safe_send_message(update.effective_user.id,"🔄 "+("پست جدیدی یافت نشد." if f else "No new posts found."))
+        await safe_send_message(update.effective_user.id,"🔄 "+("پست جدیدی یافت نشد. اکانت‌ها در حال بررسی در پس‌زمینه هستند. لطفاً کمی بعد دوباره چک کنید." if f else "No new posts found right now. We are checking your accounts in the background, please check back in a few minutes."))
     else:
         await safe_send_message(update.effective_user.id,
             f"🔄 <b>{len(posts)} "+("پست جدید</b>" if f else "new post(s)</b>"),parse_mode=ParseMode.HTML)
