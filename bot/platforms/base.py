@@ -243,7 +243,7 @@ class BasePlatformFetcher(ABC):
                 # Rate limit between posts
                 await asyncio.sleep(1.0)
             except Exception as e:
-                logger.error(f"Delivery failed for post {post.post_id}: {e}")
+                logger.error(f"Delivery failed for post {post.post_id}: {repr(e)}")
 
         # Update account health
         await self._update_fetch_success(account)

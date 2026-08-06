@@ -58,9 +58,6 @@ def build_caption(
         # but the prompt specifically says "preserving all formatting (bold, links, mentions, HTML/Markdown)".
         # We will assume `description` is already acceptable or we can just pass it directly.
         # Often RSSHub includes <img ...> and <video ...> in description, which Telegram API rejects.
-        # Let's strip <img...>, <video...>, <br> ->
-, and <p> ->
-.
         import re
         desc = re.sub(r'<br\s*/?>', '\n', desc)
         desc = re.sub(r'</p>', '\n\n', desc)
